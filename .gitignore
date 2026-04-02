@@ -53,3 +53,6 @@ alembic/versions/__pycache__/
 # Beads / Dolt files (added by bd init)
 .dolt/
 .beads-credential-key
+
+# SSH keys (private keys must not be committed)
+.claude/.ssh/

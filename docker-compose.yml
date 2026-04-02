@@ -13,7 +13,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     volumes:
-      - ssh-keys:/root/.ssh:ro
+      - ./.claude/.ssh:/root/.ssh:ro
 
   celery-worker:
     build:
@@ -28,7 +28,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     volumes:
-      - ssh-keys:/root/.ssh:ro
+      - ./.claude/.ssh:/root/.ssh:ro
 
   celery-beat:
     build:
@@ -78,4 +78,3 @@ services:
 volumes:
   db-data:
   redis-data:
-  ssh-keys:

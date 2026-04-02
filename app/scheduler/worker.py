@@ -8,6 +8,7 @@ celery_app = Celery(
     "ops-agent",
     broker=settings.redis_url,
     backend=settings.redis_url,
+    include=["app.scheduler.tasks"],
 )
 
 celery_app.conf.update(

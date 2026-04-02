@@ -55,11 +55,16 @@ class SystemdServiceCheck(Check):
 
     @staticmethod
     def _parse_state(output: str) -> str:
-        """Extract the service state from systemctl status output.
+        """Extract the service state from systemctl output.
 
-        Looks for the ``Active:`` line and extracts the first word
-        (e.g. ``active``, ``inactive``, ``failed``).
+        Handles both:
+        - Simple ``is-active`` output: just the state word (active/inactive/failed)
+        - Full ``status`` output with an ``Active:`` line
         """
+        simple = output.strip()
+        known = {"active", "inactive", "failed", "activating", "deactivating", "reloading"}
+        if simple in known:
+            return simple
         for line in output.splitlines():
             match = re.search(r"Active:\s+(\S+)", line)
             if match:
