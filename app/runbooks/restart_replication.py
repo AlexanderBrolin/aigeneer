@@ -7,12 +7,7 @@ class RestartReplicationRunbook(Runbook):
     """Restart MariaDB replication on a remote host.
 
     Executes STOP SLAVE; START SLAVE; then verifies with SHOW SLAVE STATUS.
-
-    Params:
-        host: Target hostname or IP.
-        ssh_user: SSH username.
-        ssh_key_path: Path to SSH private key.
-        ssh_port: SSH port (default 22).
+    Tools are pre-bound to the target host by execute_node — no host params needed.
     """
 
     name = "restart_replication"
@@ -21,50 +16,24 @@ class RestartReplicationRunbook(Runbook):
     async def execute(self, params: dict) -> RunbookResult:
         tool = self._get_tool("ssh_exec")
 
-        host = params["host"]
-        ssh_user = params.get("ssh_user", "deploy")
-        ssh_key_path = params.get("ssh_key_path", "")
-        ssh_port = params.get("ssh_port", 22)
-
         # Step 1: Stop and start replication
-        restart_result = await tool.ainvoke({
-            "host": host,
-            "command": 'mysql -e "STOP SLAVE; START SLAVE;"',
-            "ssh_user": ssh_user,
-            "ssh_key_path": ssh_key_path,
-            "ssh_port": ssh_port,
-        })
+        await tool.ainvoke({"command": 'mysql -e "STOP SLAVE; START SLAVE;"'})
 
-        if restart_result.get("exit_code", 1) != 0:
-            return RunbookResult(
-                success=False,
-                message=f"Не удалось перезапустить репликацию на {host}",
-                details=restart_result.get("stderr", "") or restart_result.get("stdout", ""),
-            )
+        # Step 2: Verify replication status
+        status = await tool.ainvoke({"command": 'mysql -e "SHOW SLAVE STATUS\\G"'})
 
-        # Step 2: Check replication status
-        status_result = await tool.ainvoke({
-            "host": host,
-            "command": 'mysql -e "SHOW SLAVE STATUS\\G"',
-            "ssh_user": ssh_user,
-            "ssh_key_path": ssh_key_path,
-            "ssh_port": ssh_port,
-        })
-
-        stdout = status_result.get("stdout", "")
-
-        io_running = "Slave_IO_Running: Yes" in stdout
-        sql_running = "Slave_SQL_Running: Yes" in stdout
+        io_running = "Slave_IO_Running: Yes" in status
+        sql_running = "Slave_SQL_Running: Yes" in status
 
         if io_running and sql_running:
             return RunbookResult(
                 success=True,
-                message=f"Репликация на {host} успешно перезапущена",
-                details=stdout,
+                message="Репликация успешно перезапущена",
+                details=status,
             )
         else:
             return RunbookResult(
                 success=False,
-                message=f"Репликация на {host} перезапущена, но статус неудовлетворительный",
-                details=stdout,
+                message="Репликация перезапущена, но статус неудовлетворительный",
+                details=status or "(пустой вывод SHOW SLAVE STATUS)",
             )

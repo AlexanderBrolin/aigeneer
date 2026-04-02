@@ -6,43 +6,37 @@ from app.runbooks.base import Runbook, RunbookResult
 class RestartServiceRunbook(Runbook):
     """Restart a systemd service on a remote host.
 
+    Tools are pre-bound to the target host by execute_node — no host params needed.
+
     Params:
-        host: Target hostname or IP.
         service: Name of the systemd service (e.g. "apache2", "mariadb").
-        ssh_user: SSH username.
-        ssh_key_path: Path to SSH private key.
-        ssh_port: SSH port (default 22).
     """
 
     name = "restart_service"
     is_dangerous = True
 
     async def execute(self, params: dict) -> RunbookResult:
-        tool = self._get_tool("ssh_systemctl_restart")
+        service = params.get("service", "")
+        if not service:
+            return RunbookResult(success=False, message="Параметр 'service' не указан")
 
-        result = await tool.ainvoke({
-            "host": params["host"],
-            "service": params["service"],
-            "ssh_user": params.get("ssh_user", "deploy"),
-            "ssh_key_path": params.get("ssh_key_path", ""),
-            "ssh_port": params.get("ssh_port", 22),
-        })
+        restart_tool = self._get_tool("ssh_systemctl_restart")
+        status_tool = self._get_tool("ssh_systemctl_status")
 
-        exit_code = result.get("exit_code", 1)
-        stdout = result.get("stdout", "")
-        stderr = result.get("stderr", "")
-        service = params["service"]
-        host = params["host"]
+        await restart_tool.ainvoke({"service": service})
 
-        if exit_code == 0:
+        # Verify by checking actual service state
+        state = await status_tool.ainvoke({"service": service})
+
+        if state.strip() == "active":
             return RunbookResult(
                 success=True,
-                message=f"Сервис {service} на {host} успешно перезапущен",
-                details=stdout,
+                message=f"Сервис {service} успешно перезапущен",
+                details=f"Текущий статус: {state.strip()}",
             )
         else:
             return RunbookResult(
                 success=False,
-                message=f"Не удалось перезапустить {service} на {host}",
-                details=stderr or stdout,
+                message=f"Сервис {service} перезапущен, но статус: {state.strip()}",
+                details=state,
             )

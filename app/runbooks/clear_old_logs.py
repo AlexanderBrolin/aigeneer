@@ -7,14 +7,11 @@ class ClearOldLogsRunbook(Runbook):
     """Delete old rotated log files on a remote host.
 
     Uses find to delete *.log.* files older than N days.
+    Tools are pre-bound to the target host — no host params needed.
 
     Params:
-        host: Target hostname or IP.
         log_path: Directory to search for old logs (e.g. "/var/log/apache2").
         older_than_days: Delete files older than this many days.
-        ssh_user: SSH username.
-        ssh_key_path: Path to SSH private key.
-        ssh_port: SSH port (default 22).
     """
 
     name = "clear_old_logs"
@@ -23,33 +20,15 @@ class ClearOldLogsRunbook(Runbook):
     async def execute(self, params: dict) -> RunbookResult:
         tool = self._get_tool("ssh_exec")
 
-        host = params["host"]
-        log_path = params["log_path"]
-        older_than_days = params["older_than_days"]
+        log_path = params.get("log_path", "/var/log")
+        older_than_days = params.get("older_than_days", 30)
 
-        command = f'find {log_path} -name "*.log.*" -mtime +{older_than_days} -delete'
+        command = f'find {log_path} -name "*.log.*" -mtime +{older_than_days} -delete -print'
+        output = await tool.ainvoke({"command": command})
 
-        result = await tool.ainvoke({
-            "host": host,
-            "command": command,
-            "ssh_user": params.get("ssh_user", "deploy"),
-            "ssh_key_path": params.get("ssh_key_path", ""),
-            "ssh_port": params.get("ssh_port", 22),
-        })
-
-        exit_code = result.get("exit_code", 1)
-        stdout = result.get("stdout", "")
-        stderr = result.get("stderr", "")
-
-        if exit_code == 0:
-            return RunbookResult(
-                success=True,
-                message=f"Старые логи в {log_path} на {host} удалены (старше {older_than_days} дней)",
-                details=stdout,
-            )
-        else:
-            return RunbookResult(
-                success=False,
-                message=f"Не удалось удалить старые логи в {log_path} на {host}",
-                details=stderr or stdout,
-            )
+        deleted = [line for line in output.splitlines() if line.strip()]
+        return RunbookResult(
+            success=True,
+            message=f"Удалено {len(deleted)} файлов логов старше {older_than_days} дней в {log_path}",
+            details=output or "(файлов для удаления не найдено)",
+        )
