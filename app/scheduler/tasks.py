@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.agent.graphs.analyze import AnalyzeState, get_analyze_graph
+from app.agent.graphs.analyze import AnalyzeState, run_analyze_graph
 from app.agent.tool_provider import get_read_tools
 from app.checks import CHECK_REGISTRY
 from app.db.models import CheckRun, Server
@@ -143,7 +143,6 @@ async def _collect_task_async(server_id: int) -> dict:
 
         # Invoke analyze graph
         try:
-            graph = await get_analyze_graph()
             thread_id = f"check-{check_run_id}-{uuid.uuid4().hex[:8]}"
             config = {"configurable": {"thread_id": thread_id}}
 
@@ -154,7 +153,7 @@ async def _collect_task_async(server_id: int) -> dict:
                 host_config=host_config,
             )
 
-            graph_result = await graph.ainvoke(state, config=config)
+            graph_result = await run_analyze_graph(state, config)
 
             # Save incidents and send TG notifications
             if isinstance(graph_result, dict):

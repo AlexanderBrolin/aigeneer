@@ -23,7 +23,7 @@ class ReplicationCheck(Check):
     async def run(self) -> list[Signal]:
         ssh = self._get_tool("ssh_exec")
         output = await ssh.ainvoke(
-            {"command": r'mysql -B -N -e "SHOW SLAVE STATUS\G"'}
+            {"command": 'mysql -e "SHOW SLAVE STATUS\\G"'}
         )
 
         # If output is empty/whitespace, replication is not configured

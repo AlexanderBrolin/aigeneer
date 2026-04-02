@@ -116,8 +116,19 @@ builder.add_conditional_edges("normalize", route_incidents)
 builder.add_edge("execute_node", END)
 
 
-async def get_analyze_graph():
-    from app.agent.graphs.shared import get_checkpointer
+async def run_analyze_graph(state: AnalyzeState, config: dict) -> dict:
+    """Run the analyze graph with a fresh Redis checkpointer scoped to this call.
 
-    checkpointer = await get_checkpointer()
-    return builder.compile(checkpointer=checkpointer)
+    Each Celery task calls asyncio.run(), creating a new event loop.
+    We must open and close the Redis connection *within* that loop to avoid
+    'Buffer is closed' errors from stale connections of a previous loop.
+    """
+    from langgraph.checkpoint.redis.aio import AsyncRedisSaver
+    from app.config import settings
+
+    async with AsyncRedisSaver.from_conn_string(
+        settings.redis_url, ttl={"default_ttl": 1440}
+    ) as checkpointer:
+        await checkpointer.asetup()
+        graph = builder.compile(checkpointer=checkpointer)
+        return await graph.ainvoke(state, config=config)

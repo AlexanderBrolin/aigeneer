@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # LLM
     aitunnel_base_url: str = "https://api.aitunnel.ru/v1/"
     aitunnel_api_key: str = ""
-    model_main: str = "claude-sonnet-4-6"
+    model_main: str = "claude-sonnet-4.6"
     model_fast: str = "claude-haiku-4-5"
 
     # Telegram
