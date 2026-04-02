@@ -49,12 +49,21 @@ async def generate_recommendations(days: int = 7) -> list[dict]:
     if not incidents:
         return []
 
+    from app.checks import CHECK_REGISTRY
+    known_checks = ", ".join(sorted(CHECK_REGISTRY.keys()))
+
     llm = get_llm()
     payload = json.dumps(incidents, ensure_ascii=False, indent=2)
 
+    system_prompt = (
+        RECOMMENDATION_PROMPT
+        + f"\n\nДоступные check_name в реестре: {known_checks}\n"
+        "Используй только эти имена в поле check_name или 'new' для совершенно нового типа проверки."
+    )
+
     try:
         response = await llm.ainvoke([
-            SystemMessage(content=RECOMMENDATION_PROMPT),
+            SystemMessage(content=system_prompt),
             HumanMessage(content=f"Инциденты за последние {days} дней:\n{payload}"),
         ])
         content = response.content.strip()

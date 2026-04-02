@@ -33,6 +33,10 @@
         </div>
     </div>
 
+    {% if error_msg %}
+    <div class="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{{ error_msg }}</div>
+    {% endif %}
+
     <!-- Error -->
     <div x-show="error" x-cloak class="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm" x-text="error"></div>
 

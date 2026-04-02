@@ -25,10 +25,26 @@ async def recommendations_page(request: Request):
         result = await session.execute(select(Server).where(Server.enabled.is_(True)))
         servers = result.scalars().all()
 
+    error = request.query_params.get("error")
+    error_check = request.query_params.get("check_name", "")
+    error_msg = ""
+    if error == "unknown_check":
+        error_msg = (
+            f"Проверка «{error_check}» не найдена в реестре. "
+            "Обновите страницу и попробуйте снова — ИИ предложит корректные имена."
+        )
+    elif error == "missing_fields":
+        error_msg = "Выберите сервер перед применением."
+
     return templates.TemplateResponse(
         request,
         "recommendations.html",
-        {"servers": servers, "days": days, "active_page": "recommendations"},
+        {
+            "servers": servers,
+            "days": days,
+            "active_page": "recommendations",
+            "error_msg": error_msg,
+        },
     )
 
 
@@ -45,18 +61,34 @@ async def generate_recs_api(request: Request, days: int = 7):
 @router.post("/recommendations/apply")
 @login_required
 async def apply_rec(request: Request):
+    import json as _json
+    from app.services.recommendations import apply_recommendation
+
     form = await request.form()
-    server_id = int(form.get("server_id", 0))
+    server_id_raw = form.get("server_id", "0")
     check_name = (form.get("check_name") or "").strip()
     params_raw = (form.get("params") or "{}").strip()
 
-    import json
     try:
-        params = json.loads(params_raw)
-    except json.JSONDecodeError:
+        server_id = int(server_id_raw)
+    except (ValueError, TypeError):
+        server_id = 0
+
+    try:
+        params = _json.loads(params_raw)
+    except _json.JSONDecodeError:
         params = {}
 
-    from app.services.recommendations import apply_recommendation
-    await apply_recommendation(server_id, check_name, params)
+    if not server_id or not check_name:
+        return RedirectResponse("/recommendations?error=missing_fields", status_code=302)
 
-    return RedirectResponse(f"/servers/{server_id}/checks?saved=1", status_code=302)
+    ok = await apply_recommendation(server_id, check_name, params)
+
+    if ok:
+        return RedirectResponse(f"/servers/{server_id}/checks?saved=1", status_code=302)
+    else:
+        # check_name not in registry or server not found — redirect back with error
+        return RedirectResponse(
+            f"/recommendations?error=unknown_check&check_name={check_name}",
+            status_code=302,
+        )
