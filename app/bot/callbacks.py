@@ -77,6 +77,7 @@ async def _run_and_reply(
     params: dict,
     host_config: dict,
     redis: Redis,
+    incident_db_id: int | None = None,
 ) -> None:
     """Execute a runbook and send the result as a reply, with retry keyboard on failure."""
     from app.runbooks import run_runbook
@@ -96,7 +97,8 @@ async def _run_and_reply(
         # Store retry context keyed by the reply message we're about to send.
         # We don't know the message_id yet — store under a temp key and update after send.
         retry_data = json.dumps(
-            {"runbook": runbook_name, "params": params, "host_config": host_config},
+            {"runbook": runbook_name, "params": params, "host_config": host_config,
+             "incident_db_id": incident_db_id},
             ensure_ascii=False,
         )
         # Key by current (trigger) message id; the retry handler reads it by this key.
@@ -146,7 +148,10 @@ async def on_action(callback: CallbackQuery) -> None:
 
         # Mark incident as actioned so next check cycle can re-notify if needed
         if incident_db_id:
-            await update_incident_status(incident_db_id, "actioned", action["runbook"])
+            try:
+                await update_incident_status(incident_db_id, "actioned", action["runbook"])
+            except Exception:
+                logger.exception("Failed to mark incident %s as actioned", incident_db_id)
 
         # Resume the LangGraph — execute_node runs the runbook and stores result in state
         final_state = await resume_analyze_graph(
@@ -172,6 +177,7 @@ async def on_action(callback: CallbackQuery) -> None:
                         "runbook": action["runbook"],
                         "params": action.get("params", {}),
                         "host_config": host_config,
+                        "incident_db_id": incident_db_id,
                     },
                     ensure_ascii=False,
                 )
@@ -212,6 +218,14 @@ async def on_retry(callback: CallbackQuery) -> None:
 
         await callback.answer("Выполняю...")
         await callback.message.edit_reply_markup(reply_markup=None)
+
+        # Keep incident marked as actioned so dedup bypass stays active
+        incident_db_id = ctx.get("incident_db_id")
+        if incident_db_id:
+            try:
+                await update_incident_status(incident_db_id, "actioned", runbook_name)
+            except Exception:
+                logger.exception("Failed to mark incident %s as actioned in retry", incident_db_id)
 
         await _run_and_reply(callback, runbook_name, params, host_config, redis)
     finally:
