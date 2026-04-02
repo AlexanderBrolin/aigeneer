@@ -9,12 +9,14 @@ from app.runbooks.restart_service import RestartServiceRunbook
 from app.runbooks.restart_replication import RestartReplicationRunbook
 from app.runbooks.clear_old_logs import ClearOldLogsRunbook
 from app.runbooks.show_slow_queries import ShowSlowQueriesRunbook
+from app.runbooks.show_replication_status import ShowReplicationStatusRunbook
 
 RUNBOOK_REGISTRY: dict[str, type[Runbook]] = {
     "restart_service": RestartServiceRunbook,
     "restart_replication": RestartReplicationRunbook,
     "clear_old_logs": ClearOldLogsRunbook,
     "show_slow_queries": ShowSlowQueriesRunbook,
+    "show_replication_status": ShowReplicationStatusRunbook,
 }
 
 
