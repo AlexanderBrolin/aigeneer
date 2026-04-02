@@ -57,7 +57,14 @@ async def generate_recommendations(days: int = 7) -> list[dict]:
             SystemMessage(content=RECOMMENDATION_PROMPT),
             HumanMessage(content=f"Инциденты за последние {days} дней:\n{payload}"),
         ])
-        recs = json.loads(response.content)
+        content = response.content.strip()
+        # Strip markdown code block if present (```json ... ``` or ``` ... ```)
+        if content.startswith("```"):
+            content = content.split("```", 2)[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+        recs = json.loads(content)
         if not isinstance(recs, list):
             recs = []
     except (json.JSONDecodeError, Exception) as exc:

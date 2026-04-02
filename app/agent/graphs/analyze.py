@@ -25,6 +25,7 @@ class AnalyzeState:
     pending_action: dict | None = None
     check_run_id: int | None = None
     host_config: dict = field(default_factory=dict)
+    runbook_result: dict | None = None
 
 
 async def normalize_node(state: AnalyzeState) -> dict:
@@ -103,7 +104,15 @@ async def execute_node(state: AnalyzeState) -> dict:
     result = await run_runbook(action["runbook"], action["params"], tools)
     logger.info("Runbook %s result: %s", action["runbook"], result.message)
 
-    return {"incidents": state.incidents}
+    return {
+        "incidents": state.incidents,
+        "runbook_result": {
+            "runbook": action["runbook"],
+            "success": result.success,
+            "message": result.message,
+            "details": result.details or "",
+        },
+    }
 
 
 # Build the graph

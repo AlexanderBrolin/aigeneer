@@ -85,14 +85,23 @@ async def on_action(callback: CallbackQuery) -> None:
         await callback.message.edit_reply_markup(reply_markup=None)
 
         # Resume the LangGraph
-        await resume_analyze_graph(
+        final_state = await resume_analyze_graph(
             thread_id,
             Command(resume={"runbook": action["runbook"], "params": action.get("params", {})}),
         )
 
-        await callback.message.reply(
-            f"Runbook <b>{action['runbook']}</b> выполнен.",
-        )
+        rb_result = final_state.get("runbook_result") if isinstance(final_state, dict) else None
+        if rb_result:
+            icon = "✅" if rb_result["success"] else "❌"
+            reply_text = f"{icon} <b>{rb_result['message']}</b>"
+            if rb_result.get("details"):
+                # Truncate details to fit TG message limit
+                details = rb_result["details"][:2000]
+                reply_text += f"\n\n<pre>{details}</pre>"
+        else:
+            reply_text = f"Runbook <b>{action['runbook']}</b> выполнен."
+
+        await callback.message.reply(reply_text, parse_mode="HTML")
     finally:
         await redis.aclose()
 
