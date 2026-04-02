@@ -204,12 +204,22 @@ async def _collect_task_async(server_id: int) -> dict:
                 )
                 inc["db_id"] = db_id
 
-                # Send TG notification (best-effort), then mark as notified
+                # Send TG notification (best-effort)
+                tg_sent = False
                 try:
                     await _notify_tg(inc, thread_id, server_host)
-                    await update_incident_status(db_id, "notified")
+                    tg_sent = True
                 except Exception:
                     logger.exception("Failed to send TG notification for incident %s", db_id)
+
+                # Mark as notified in separate try so a DB hiccup doesn't look like a TG failure
+                if tg_sent:
+                    try:
+                        await update_incident_status(db_id, "notified")
+                    except Exception:
+                        logger.warning(
+                            "Could not mark incident %s as notified (non-fatal)", db_id
+                        )
 
         except Exception:
             logger.exception("Analyze graph failed for server %s", server_name)

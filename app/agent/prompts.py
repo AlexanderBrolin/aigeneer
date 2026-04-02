@@ -21,6 +21,7 @@ NORMALIZE_PROMPT = """
 - restart_replication — params: {host, ssh_user, ssh_key_path, ssh_port}
 - clear_old_logs — params: {host, log_path, older_than_days, ssh_user, ssh_key_path, ssh_port}
 - show_slow_queries — params: {host, lines, log_path, ssh_user, ssh_key_path, ssh_port} (safe, read-only)
+- show_replication_status — params: {} (safe, read-only, показывает SHOW SLAVE STATUS)
 
 Верни ТОЛЬКО валидный JSON массив, без markdown, без пояснений.
 """.strip()
