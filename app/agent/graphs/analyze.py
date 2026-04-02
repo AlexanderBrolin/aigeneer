@@ -116,6 +116,24 @@ builder.add_conditional_edges("normalize", route_incidents)
 builder.add_edge("execute_node", END)
 
 
+async def resume_analyze_graph(thread_id: str, command) -> dict:
+    """Resume an interrupted analyze graph thread (e.g. from a TG button callback).
+
+    Uses a fresh Redis connection scoped to this call so it works in both
+    the aiogram event loop (persistent) and Celery tasks (new loop per task).
+    """
+    from langgraph.checkpoint.redis.aio import AsyncRedisSaver
+    from app.config import settings
+
+    async with AsyncRedisSaver.from_conn_string(
+        settings.redis_url, ttl={"default_ttl": 1440}
+    ) as checkpointer:
+        await checkpointer.asetup()
+        graph = builder.compile(checkpointer=checkpointer)
+        config = {"configurable": {"thread_id": thread_id}}
+        return await graph.ainvoke(command, config=config)
+
+
 async def run_analyze_graph(state: AnalyzeState, config: dict) -> dict:
     """Run the analyze graph with a fresh Redis checkpointer scoped to this call.
 

@@ -12,13 +12,30 @@ from sqlalchemy.orm import selectinload
 
 from app.agent.graphs.analyze import AnalyzeState, run_analyze_graph
 from app.agent.tool_provider import get_read_tools
+from app.bot.handlers import notify_incident
+from app.bot.router import get_bot
 from app.checks import CHECK_REGISTRY
+from app.config import settings
 from app.db.models import CheckRun, Server
 from app.db.session import get_session
 from app.scheduler.worker import celery_app
 from app.services.incident import save_incident
 
 logger = logging.getLogger(__name__)
+
+
+async def _notify_tg(incident: dict, thread_id: str, host: str) -> None:
+    """Send incident notification to Telegram."""
+    if not settings.tg_chat_id or not settings.tg_bot_token:
+        logger.warning("TG not configured (TG_CHAT_ID or TG_BOT_TOKEN missing), skipping notification")
+        return
+    bot = get_bot()
+    await notify_incident(
+        bot=bot,
+        chat_id=settings.tg_chat_id,
+        thread_id=thread_id,
+        interrupt_data={"incident": incident, "host": host},
+    )
 
 
 @celery_app.task(name="app.scheduler.tasks.run_all_checks")

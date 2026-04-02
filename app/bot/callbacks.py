@@ -11,7 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from langgraph.types import Command
 from redis.asyncio import Redis
 
-from app.agent.graphs.analyze import get_analyze_graph
+from app.agent.graphs.analyze import resume_analyze_graph
 from app.bot.router import router
 from app.config import settings
 
@@ -85,11 +85,9 @@ async def on_action(callback: CallbackQuery) -> None:
         await callback.message.edit_reply_markup(reply_markup=None)
 
         # Resume the LangGraph
-        graph = await get_analyze_graph()
-        config = {"configurable": {"thread_id": thread_id}}
-        await graph.ainvoke(
+        await resume_analyze_graph(
+            thread_id,
             Command(resume={"runbook": action["runbook"], "params": action.get("params", {})}),
-            config,
         )
 
         await callback.message.reply(
@@ -115,12 +113,7 @@ async def on_ignore(callback: CallbackQuery) -> None:
     redis = await _get_redis()
     try:
         # Resume graph indicating ignore
-        graph = await get_analyze_graph()
-        config = {"configurable": {"thread_id": thread_id}}
-        await graph.ainvoke(
-            Command(resume={"runbook": None}),
-            config,
-        )
+        await resume_analyze_graph(thread_id, Command(resume={"runbook": None}))
 
         await callback.message.reply("Проигнорировано.")
     finally:
