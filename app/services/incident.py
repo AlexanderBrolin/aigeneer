@@ -6,6 +6,27 @@ from app.db.models import Incident
 from app.db.session import get_session
 
 
+async def find_active_incident(host: str, problem_type: str) -> Incident | None:
+    """Return an open incident for this (host, problem_type), or None.
+
+    Statuses 'new' and 'notified' mean the problem is already being tracked.
+    Status 'actioned' means a fix was attempted — if the problem is back, we
+    should notify again.
+    """
+    async with get_session() as session:
+        result = await session.execute(
+            select(Incident)
+            .where(
+                Incident.host == host,
+                Incident.problem_type == problem_type,
+                Incident.status.in_(["new", "notified"]),
+            )
+            .order_by(Incident.id.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+
 async def save_incident(
     check_run_id: int | None,
     thread_id: str | None,

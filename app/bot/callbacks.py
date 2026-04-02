@@ -14,6 +14,7 @@ from redis.asyncio import Redis
 from app.agent.graphs.analyze import resume_analyze_graph
 from app.bot.router import router
 from app.config import settings
+from app.services.incident import update_incident_status
 
 logger = logging.getLogger(__name__)
 
@@ -79,10 +80,15 @@ async def on_action(callback: CallbackQuery) -> None:
             return
 
         action = actions[action_idx]
+        incident_db_id = data.get("incident", {}).get("db_id")
         await callback.answer("Выполняю...")
 
         # Remove keyboard from the message
         await callback.message.edit_reply_markup(reply_markup=None)
+
+        # Mark incident as actioned so next check cycle can re-notify if needed
+        if incident_db_id:
+            await update_incident_status(incident_db_id, "actioned", action["runbook"])
 
         # Resume the LangGraph
         final_state = await resume_analyze_graph(
@@ -121,6 +127,13 @@ async def on_ignore(callback: CallbackQuery) -> None:
 
     redis = await _get_redis()
     try:
+        raw = await redis.get(f"tg_thread:{callback.message.message_id}")
+        if raw:
+            data = json.loads(raw)
+            incident_db_id = data.get("incident", {}).get("db_id")
+            if incident_db_id:
+                await update_incident_status(incident_db_id, "ignored")
+
         # Resume graph indicating ignore
         await resume_analyze_graph(thread_id, Command(resume={"runbook": None}))
 

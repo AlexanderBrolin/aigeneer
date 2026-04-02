@@ -40,7 +40,13 @@ async def normalize_node(state: AnalyzeState) -> dict:
     ])
 
     try:
-        incidents = json.loads(response.content)
+        content = response.content.strip()
+        if content.startswith("```"):
+            content = content.split("```", 2)[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+        incidents = json.loads(content)
     except json.JSONDecodeError:
         logger.error("Failed to parse LLM response: %s", response.content[:200])
         return {"incidents": []}

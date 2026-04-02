@@ -19,7 +19,7 @@ from app.config import settings
 from app.db.models import CheckRun, Server
 from app.db.session import get_session
 from app.scheduler.worker import celery_app
-from app.services.incident import save_incident
+from app.services.incident import find_active_incident, save_incident, update_incident_status
 
 logger = logging.getLogger(__name__)
 
@@ -179,22 +179,37 @@ async def _collect_task_async(server_id: int) -> dict:
                 incidents = getattr(graph_result, "incidents", [])
 
             for inc in incidents:
-                if isinstance(inc, dict):
-                    db_id = await save_incident(
-                        check_run_id=check_run_id,
-                        thread_id=thread_id,
-                        host=server_host,
-                        severity=inc.get("severity", "warning"),
-                        problem_type=inc.get("problem_type", "unknown"),
-                        evidence=inc.get("evidence", ""),
-                    )
-                    inc["db_id"] = db_id
+                if not isinstance(inc, dict):
+                    continue
 
-                    # Send TG notification (best-effort)
-                    try:
-                        await _notify_tg(inc, thread_id, server_host)
-                    except Exception:
-                        logger.exception("Failed to send TG notification for incident %s", db_id)
+                problem_type = inc.get("problem_type", "unknown")
+
+                # Deduplication: skip if an open incident already exists.
+                # Re-notify only if it was previously actioned (fix was attempted).
+                existing = await find_active_incident(server_host, problem_type)
+                if existing is not None:
+                    logger.info(
+                        "Skipping duplicate incident %s on %s (existing id=%s status=%s)",
+                        problem_type, server_host, existing.id, existing.status,
+                    )
+                    continue
+
+                db_id = await save_incident(
+                    check_run_id=check_run_id,
+                    thread_id=thread_id,
+                    host=server_host,
+                    severity=inc.get("severity", "warning"),
+                    problem_type=problem_type,
+                    evidence=inc.get("evidence", ""),
+                )
+                inc["db_id"] = db_id
+
+                # Send TG notification (best-effort), then mark as notified
+                try:
+                    await _notify_tg(inc, thread_id, server_host)
+                    await update_incident_status(db_id, "notified")
+                except Exception:
+                    logger.exception("Failed to send TG notification for incident %s", db_id)
 
         except Exception:
             logger.exception("Analyze graph failed for server %s", server_name)
