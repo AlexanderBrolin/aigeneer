@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% set active_page = "incidents" %}
+
+{% block page_title %}Инциденты{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+    <form method="GET" action="/incidents" class="flex flex-wrap gap-4 items-end">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Хост</label>
+            <select name="host" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="">Все</option>
+                {% for h in hosts %}
+                <option value="{{ h }}" {{ 'selected' if filters.host == h else '' }}>{{ h }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Severity</label>
+            <select name="severity" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="">Все</option>
+                <option value="critical" {{ 'selected' if filters.severity == 'critical' else '' }}>Critical</option>
+                <option value="warning" {{ 'selected' if filters.severity == 'warning' else '' }}>Warning</option>
+                <option value="info" {{ 'selected' if filters.severity == 'info' else '' }}>Info</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Статус</label>
+            <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="">Все</option>
+                <option value="new" {{ 'selected' if filters.status == 'new' else '' }}>New</option>
+                <option value="notified" {{ 'selected' if filters.status == 'notified' else '' }}>Notified</option>
+                <option value="actioned" {{ 'selected' if filters.status == 'actioned' else '' }}>Actioned</option>
+                <option value="resolved" {{ 'selected' if filters.status == 'resolved' else '' }}>Resolved</option>
+            </select>
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+            Применить
+        </button>
+    </form>
+</div>
+
+<!-- Incidents table -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                    <th class="px-6 py-3 text-left">ID</th>
+                    <th class="px-6 py-3 text-left">Хост</th>
+                    <th class="px-6 py-3 text-left">Severity</th>
+                    <th class="px-6 py-3 text-left">Тип</th>
+                    <th class="px-6 py-3 text-left">Статус</th>
+                    <th class="px-6 py-3 text-left">Действие</th>
+                    <th class="px-6 py-3 text-left">Время</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for inc in incidents %}
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="location.href='/incidents/{{ inc.id }}'">
+                    <td class="px-6 py-3 text-gray-500">#{{ inc.id }}</td>
+                    <td class="px-6 py-3 font-medium text-gray-800">{{ inc.host }}</td>
+                    <td class="px-6 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                            {% if inc.severity == 'critical' %}bg-red-50 text-red-700
+                            {% elif inc.severity == 'warning' %}bg-yellow-50 text-yellow-700
+                            {% else %}bg-blue-50 text-blue-700{% endif %}">
+                            {{ inc.severity }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-gray-600">{{ inc.problem_type }}</td>
+                    <td class="px-6 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                            {% if inc.status == 'resolved' %}bg-green-50 text-green-700
+                            {% elif inc.status == 'new' %}bg-red-50 text-red-700
+                            {% elif inc.status == 'notified' %}bg-yellow-50 text-yellow-700
+                            {% else %}bg-gray-50 text-gray-700{% endif %}">
+                            {{ inc.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-gray-500">{{ inc.action_taken or '—' }}</td>
+                    <td class="px-6 py-3 text-gray-500">{{ inc.created_at.strftime('%d.%m %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+                {% if not incidents %}
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-400">Нет инцидентов</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

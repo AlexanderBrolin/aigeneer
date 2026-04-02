@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% set active_page = "check_runs" %}
+
+{% block page_title %}История проверок{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+    <form method="GET" action="/check-runs" class="flex flex-wrap gap-4 items-end">
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Хост</label>
+            <select name="host" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="">Все</option>
+                {% for h in hosts %}
+                <option value="{{ h }}" {{ 'selected' if filters.host == h else '' }}>{{ h }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Статус</label>
+            <select name="status" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                <option value="">Все</option>
+                <option value="ok" {{ 'selected' if filters.status == 'ok' else '' }}>OK</option>
+                <option value="incident" {{ 'selected' if filters.status == 'incident' else '' }}>Incident</option>
+                <option value="error" {{ 'selected' if filters.status == 'error' else '' }}>Error</option>
+                <option value="running" {{ 'selected' if filters.status == 'running' else '' }}>Running</option>
+            </select>
+        </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+            Применить
+        </button>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                <tr>
+                    <th class="px-6 py-3 text-left">ID</th>
+                    <th class="px-6 py-3 text-left">Хост</th>
+                    <th class="px-6 py-3 text-left">Проверка</th>
+                    <th class="px-6 py-3 text-left">Статус</th>
+                    <th class="px-6 py-3 text-left">Сигналов</th>
+                    <th class="px-6 py-3 text-left">Начало</th>
+                    <th class="px-6 py-3 text-left">Длительность</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for run in check_runs %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-3 text-gray-400">#{{ run.id }}</td>
+                    <td class="px-6 py-3 font-medium text-gray-800">{{ run.host }}</td>
+                    <td class="px-6 py-3 text-gray-600 font-mono text-xs">{{ run.check_name }}</td>
+                    <td class="px-6 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                            {% if run.status == 'ok' %}bg-green-50 text-green-700
+                            {% elif run.status == 'incident' %}bg-red-50 text-red-700
+                            {% elif run.status == 'error' %}bg-orange-50 text-orange-700
+                            {% else %}bg-blue-50 text-blue-700{% endif %}">
+                            {{ run.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-gray-600">{{ run.signal_count }}</td>
+                    <td class="px-6 py-3 text-gray-500">{{ run.started_at.strftime('%d.%m %H:%M') }}</td>
+                    <td class="px-6 py-3 text-gray-400 text-xs">
+                        {% if run.finished_at %}
+                        {{ ((run.finished_at - run.started_at).total_seconds() | int) }}s
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not check_runs %}
+                <tr>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-400">Нет данных о проверках</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

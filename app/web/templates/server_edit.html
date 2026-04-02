@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% set active_page = "servers" %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+    {% if error %}
+    <div class="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">{{ error }}</div>
+    {% endif %}
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <form method="POST" action="{{ action }}">
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Name -->
+                <div class="col-span-2">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Имя сервера *</label>
+                    <input type="text" name="name"
+                           value="{{ server.name if server else '' }}"
+                           placeholder="web-01"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Host -->
+                <div class="col-span-2">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Хост / IP *</label>
+                    <input type="text" name="host"
+                           value="{{ server.host if server else '' }}"
+                           placeholder="192.168.1.1 или web-01.example.com"
+                           required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- SSH User -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">SSH пользователь</label>
+                    <input type="text" name="ssh_user"
+                           value="{{ server.ssh_user if server else 'deploy' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- SSH Port -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">SSH порт</label>
+                    <input type="number" name="ssh_port"
+                           value="{{ server.ssh_port if server else 22 }}"
+                           min="1" max="65535"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- SSH Key Path -->
+                <div class="col-span-2">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">Путь к SSH ключу</label>
+                    <input type="text" name="ssh_key_path"
+                           value="{{ server.ssh_key_path if server and server.ssh_key_path else '' }}"
+                           placeholder="/root/.ssh/id_rsa"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-400 mt-1">Путь внутри контейнера. Монтируйте ключи через volume.</p>
+                </div>
+
+                <!-- SSH Password (optional) -->
+                <div class="col-span-2">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">SSH пароль (если нет ключа)</label>
+                    <input type="password" name="ssh_password"
+                           placeholder="Оставьте пустым если используется ключ"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Enabled -->
+                <div class="col-span-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="enabled"
+                               {{ 'checked' if not server or server.enabled else '' }}
+                               class="w-4 h-4 text-blue-600 rounded">
+                        <span class="text-sm text-gray-700">Мониторинг активен</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    Сохранить
+                </button>
+                <a href="/servers"
+                   class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">
+                    Отмена
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
