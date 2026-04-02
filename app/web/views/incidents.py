@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
-from app.db.models import Incident, Server
+from app.db.models import Incident
 from app.db.session import get_session
 from app.web.auth import login_required
 
@@ -25,11 +25,9 @@ async def incidents_list(request: Request):
     status_filter = params.get("status", "")
 
     async with get_session() as session:
-        # Get distinct hosts for filter dropdown
         rows = await session.execute(select(Incident.host).distinct())
         hosts = sorted([r[0] for r in rows.all()])
 
-        # Build query with filters
         query = select(Incident).order_by(Incident.created_at.desc())
         if host_filter:
             query = query.where(Incident.host == host_filter)
@@ -42,9 +40,9 @@ async def incidents_list(request: Request):
         incidents = result.scalars().all()
 
     return templates.TemplateResponse(
+        request,
         "incidents.html",
         {
-            "request": request,
             "incidents": incidents,
             "hosts": hosts,
             "filters": {
@@ -66,12 +64,9 @@ async def incident_detail(request: Request, incident_id: int):
             return RedirectResponse("/incidents", status_code=302)
 
     return templates.TemplateResponse(
+        request,
         "incident_detail.html",
-        {
-            "request": request,
-            "incident": incident,
-            "active_page": "incidents",
-        },
+        {"incident": incident, "active_page": "incidents"},
     )
 
 

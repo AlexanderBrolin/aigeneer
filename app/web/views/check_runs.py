@@ -36,9 +36,9 @@ async def check_runs_list(request: Request):
         check_runs = result.scalars().all()
 
     return templates.TemplateResponse(
+        request,
         "check_runs.html",
         {
-            "request": request,
             "check_runs": check_runs,
             "hosts": hosts,
             "filters": {"host": host_filter, "status": status_filter},

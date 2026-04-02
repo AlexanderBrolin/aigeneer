@@ -91,6 +91,5 @@ async def dashboard(request: Request):
     }
 
     return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "stats": stats, "recent_incidents": recent_incidents},
+        request, "dashboard.html", {"stats": stats, "recent_incidents": recent_incidents}
     )

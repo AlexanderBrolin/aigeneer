@@ -20,7 +20,7 @@ async def root(request: Request):
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @router.post("/login")
@@ -35,7 +35,7 @@ async def login_submit(request: Request):
         return RedirectResponse("/dashboard", status_code=302)
 
     return templates.TemplateResponse(
-        "login.html", {"request": request, "error": "Неверные логин или пароль"}
+        request, "login.html", {"error": "Неверные логин или пароль"}
     )
 
 

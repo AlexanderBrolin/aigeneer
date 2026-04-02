@@ -26,8 +26,7 @@ async def servers_list(request: Request):
         servers = result.scalars().all()
 
     return templates.TemplateResponse(
-        "servers.html",
-        {"request": request, "servers": servers, "active_page": "servers"},
+        request, "servers.html", {"servers": servers, "active_page": "servers"}
     )
 
 
@@ -35,9 +34,9 @@ async def servers_list(request: Request):
 @login_required
 async def server_create_form(request: Request):
     return templates.TemplateResponse(
+        request,
         "server_edit.html",
         {
-            "request": request,
             "server": None,
             "active_page": "servers",
             "action": "/servers/create",
@@ -55,9 +54,9 @@ async def server_create(request: Request):
 
     if not name or not host:
         return templates.TemplateResponse(
+            request,
             "server_edit.html",
             {
-                "request": request,
                 "server": None,
                 "active_page": "servers",
                 "action": "/servers/create",
@@ -92,9 +91,9 @@ async def server_edit_form(request: Request, server_id: int):
             return RedirectResponse("/servers", status_code=302)
 
     return templates.TemplateResponse(
+        request,
         "server_edit.html",
         {
-            "request": request,
             "server": server,
             "active_page": "servers",
             "action": f"/servers/{server_id}/edit",
@@ -114,9 +113,9 @@ async def server_edit(request: Request, server_id: int):
         async with get_session() as session:
             server = await session.get(Server, server_id)
         return templates.TemplateResponse(
+            request,
             "server_edit.html",
             {
-                "request": request,
                 "server": server,
                 "active_page": "servers",
                 "action": f"/servers/{server_id}/edit",
@@ -166,9 +165,9 @@ async def server_checks_form(request: Request, server_id: int):
         existing_checks = {sc.check_name: sc for sc in result.scalars().all()}
 
     return templates.TemplateResponse(
+        request,
         "server_checks.html",
         {
-            "request": request,
             "server": server,
             "active_page": "servers",
             "check_registry": list(CHECK_REGISTRY.keys()),
@@ -187,7 +186,6 @@ async def server_checks_update(request: Request, server_id: int):
         if not server:
             return RedirectResponse("/servers", status_code=302)
 
-        # Remove all existing checks, re-create from form
         result = await session.execute(
             select(ServerCheck).where(ServerCheck.server_id == server_id)
         )

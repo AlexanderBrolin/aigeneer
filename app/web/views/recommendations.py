@@ -26,13 +26,9 @@ async def recommendations_page(request: Request):
         servers = result.scalars().all()
 
     return templates.TemplateResponse(
+        request,
         "recommendations.html",
-        {
-            "request": request,
-            "servers": servers,
-            "days": days,
-            "active_page": "recommendations",
-        },
+        {"servers": servers, "days": days, "active_page": "recommendations"},
     )
 
 
