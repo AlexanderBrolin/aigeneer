@@ -51,6 +51,11 @@ async def resolve_ssh_config(
     return config
 
 
+def _sudo(cmd: str, use_sudo: bool) -> str:
+    """Prefix command with sudo if needed."""
+    return f"sudo {cmd}" if use_sudo else cmd
+
+
 def get_read_tools(host_config: dict) -> list:
     """Return read-only SSH tools pre-bound to the given host.
 
@@ -66,6 +71,7 @@ def get_read_tools(host_config: dict) -> list:
         None if ssh_key_content else settings.ssh_default_key_path
     )
     ssh_port = int(host_config.get("ssh_port") or 22)
+    use_sudo = ssh_user != "root"
 
     @tool
     async def ssh_exec(command: str) -> str:
@@ -83,7 +89,7 @@ def get_read_tools(host_config: dict) -> list:
         Set tail_lines > 0 to read only the last N lines."""
         cmd = f"tail -n {tail_lines} {path}" if tail_lines else f"cat {path}"
         result = await _ssh_run(
-            host, cmd, ssh_user,
+            host, _sudo(cmd, use_sudo), ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
@@ -93,7 +99,7 @@ def get_read_tools(host_config: dict) -> list:
     async def ssh_systemctl_status(service: str) -> str:
         """Get the active state of a systemd service (active/inactive/failed)."""
         result = await _ssh_run(
-            host, f"systemctl is-active {service}", ssh_user,
+            host, _sudo(f"systemctl is-active {service}", use_sudo), ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
@@ -104,7 +110,7 @@ def get_read_tools(host_config: dict) -> list:
         """Execute a MySQL query on the remote host via SSH. Returns tab-separated output."""
         cmd = SSHMysqlExecTool._build_mysql_command(query)
         result = await _ssh_run(
-            host, cmd, ssh_user,
+            host, _sudo(cmd, use_sudo), ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
