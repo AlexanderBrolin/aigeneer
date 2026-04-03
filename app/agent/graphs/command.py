@@ -68,16 +68,62 @@ class CommandState:
     pending_command: dict | None = None
 
 
+def _quick_db_query_match(text: str) -> dict | None:
+    """Keyword-based pre-classification for common DB queries (no LLM needed)."""
+    low = text.lower().strip()
+    if any(kw in low for kw in ("серверы", "серверов", "servers", "список серверов", "какие серв")):
+        return {"intent": "db_query", "db_query_type": "servers", "host": "", "requires_confirm": False, "pending_command": None}
+    if any(kw in low for kw in ("инцидент", "incidents", "проблем", "алерт")):
+        return {"intent": "db_query", "db_query_type": "incidents", "host": "", "requires_confirm": False, "pending_command": None}
+    if any(kw in low for kw in ("проверки", "проверок", "check_runs", "последние проверки", "checks")):
+        return {"intent": "db_query", "db_query_type": "check_runs", "host": "", "requires_confirm": False, "pending_command": None}
+    return None
+
+
+def _extract_json(text: str) -> dict | None:
+    """Try to extract JSON from LLM response (may be wrapped in markdown)."""
+    text = text.strip()
+    # Direct JSON
+    if text.startswith("{"):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+    # JSON in markdown code block
+    import re
+    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    # JSON somewhere in text
+    match = re.search(r"\{[^{}]*\"intent\"[^{}]*\}", text)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+    return None
+
+
 async def classify_intent(state: CommandState) -> dict:
     """LLM classifies command intent: read vs write, extracts host and params."""
+    # Fast path: keyword match for common DB queries
+    quick = _quick_db_query_match(state.message)
+    if quick:
+        return quick
+
     llm = get_fast_llm()
     try:
         resp = await llm.ainvoke([
             SystemMessage(content=CLASSIFY_PROMPT),
             HumanMessage(content=state.message),
         ])
-        data = json.loads(resp.content)
-    except (json.JSONDecodeError, Exception) as exc:
+        data = _extract_json(resp.content)
+        if data is None:
+            raise ValueError(f"No JSON found in LLM response: {resp.content[:200]}")
+    except Exception as exc:
         logger.warning("classify_intent failed: %s", exc)
         return {
             "intent": "unknown",
