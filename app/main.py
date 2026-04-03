@@ -9,7 +9,27 @@ from app.config import settings
 
 @asynccontextmanager
 async def lifespan(app):
-    """Start Aiogram bot polling alongside FastAPI."""
+    """Seed DB on first start, then start Aiogram bot polling."""
+    # Seed settings and admin user from .env on first startup
+    from app.db.session import get_session
+    from app.services.seed import seed_admin_user, seed_settings
+
+    async with get_session() as session:
+        env_values = {
+            "aitunnel_base_url": settings.aitunnel_base_url,
+            "aitunnel_api_key": settings.aitunnel_api_key,
+            "model_main": settings.model_main,
+            "model_fast": settings.model_fast,
+            "tg_bot_token": settings.tg_bot_token,
+            "tg_chat_id": settings.tg_chat_id,
+            "tg_allowed_users": settings.tg_allowed_users,
+            "ssh_default_user": settings.ssh_default_user,
+            "check_interval_minutes": str(settings.check_interval_minutes),
+        }
+        await seed_settings(session, secret_key=settings.secret_key, env_values=env_values)
+        await seed_admin_user(session, username=settings.admin_username, password=settings.admin_password)
+
+    # Start TG bot
     task = None
     if settings.tg_bot_token:
         from app.bot.router import dp, get_bot
