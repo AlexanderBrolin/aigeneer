@@ -22,9 +22,20 @@ class ShowSlowQueriesRunbook(Runbook):
         lines = params.get("lines", 50)
         log_path = params.get("log_path", "/var/log/mysql/slow.log")
 
-        output = await tool.ainvoke({"command": f"tail -n {lines} {log_path}"})
+        response = await tool.ainvoke({"command": f"tail -n {lines} {log_path}"})
 
-        if not output or not output.strip():
+        exit_code = response.get("exit_code", 0)
+        stdout = response.get("stdout", "")
+        stderr = response.get("stderr", "")
+
+        if exit_code != 0:
+            return RunbookResult(
+                success=False,
+                message=f"Не удалось прочитать {log_path}",
+                details=stderr or stdout,
+            )
+
+        if not stdout or not stdout.strip():
             return RunbookResult(
                 success=True,
                 message=f"Медленных запросов нет (или файл {log_path} пуст)",
@@ -34,5 +45,5 @@ class ShowSlowQueriesRunbook(Runbook):
         return RunbookResult(
             success=True,
             message=f"Последние {lines} строк {log_path}",
-            details=output,
+            details=stdout,
         )

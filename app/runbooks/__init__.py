@@ -10,6 +10,14 @@ from app.runbooks.restart_replication import RestartReplicationRunbook
 from app.runbooks.clear_old_logs import ClearOldLogsRunbook
 from app.runbooks.show_slow_queries import ShowSlowQueriesRunbook
 from app.runbooks.show_replication_status import ShowReplicationStatusRunbook
+from app.runbooks.check_backup import CheckBackupRunbook
+from app.runbooks.free_memory import FreeMemoryRunbook
+from app.runbooks.kill_process import KillProcessRunbook
+from app.runbooks.mysql_processlist import MysqlProcesslistRunbook
+from app.runbooks.rotate_logs import RotateLogsRunbook
+from app.runbooks.show_connections import ShowConnectionsRunbook
+from app.runbooks.show_disk_usage import ShowDiskUsageRunbook
+from app.runbooks.show_top_processes import ShowTopProcessesRunbook
 
 RUNBOOK_REGISTRY: dict[str, type[Runbook]] = {
     "restart_service": RestartServiceRunbook,
@@ -17,6 +25,14 @@ RUNBOOK_REGISTRY: dict[str, type[Runbook]] = {
     "clear_old_logs": ClearOldLogsRunbook,
     "show_slow_queries": ShowSlowQueriesRunbook,
     "show_replication_status": ShowReplicationStatusRunbook,
+    "show_top_processes": ShowTopProcessesRunbook,
+    "show_connections": ShowConnectionsRunbook,
+    "show_disk_usage": ShowDiskUsageRunbook,
+    "mysql_processlist": MysqlProcesslistRunbook,
+    "check_backup": CheckBackupRunbook,
+    "rotate_logs": RotateLogsRunbook,
+    "kill_process": KillProcessRunbook,
+    "free_memory": FreeMemoryRunbook,
 }
 
 

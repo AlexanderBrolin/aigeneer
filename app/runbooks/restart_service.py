@@ -21,22 +21,21 @@ class RestartServiceRunbook(Runbook):
             return RunbookResult(success=False, message="Параметр 'service' не указан")
 
         restart_tool = self._get_tool("ssh_systemctl_restart")
-        status_tool = self._get_tool("ssh_systemctl_status")
+        response = await restart_tool.ainvoke({"service": service})
 
-        await restart_tool.ainvoke({"service": service})
+        exit_code = response.get("exit_code", 0)
+        stderr = response.get("stderr", "")
+        stdout = response.get("stdout", "")
 
-        # Verify by checking actual service state
-        state = await status_tool.ainvoke({"service": service})
-
-        if state.strip() == "active":
+        if exit_code == 0:
             return RunbookResult(
                 success=True,
                 message=f"Сервис {service} успешно перезапущен",
-                details=f"Текущий статус: {state.strip()}",
+                details=stdout,
             )
         else:
             return RunbookResult(
                 success=False,
-                message=f"Сервис {service} перезапущен, но статус: {state.strip()}",
-                details=state,
+                message=f"Не удалось перезапустить сервис {service}",
+                details=stderr or stdout,
             )

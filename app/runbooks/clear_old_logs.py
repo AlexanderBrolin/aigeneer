@@ -24,11 +24,22 @@ class ClearOldLogsRunbook(Runbook):
         older_than_days = params.get("older_than_days", 30)
 
         command = f'find {log_path} -name "*.log.*" -mtime +{older_than_days} -delete -print'
-        output = await tool.ainvoke({"command": command})
+        response = await tool.ainvoke({"command": command})
 
-        deleted = [line for line in output.splitlines() if line.strip()]
+        exit_code = response.get("exit_code", 0)
+        stdout = response.get("stdout", "")
+        stderr = response.get("stderr", "")
+
+        if exit_code != 0:
+            return RunbookResult(
+                success=False,
+                message=f"Ошибка при удалении логов в {log_path}",
+                details=stderr or stdout,
+            )
+
+        deleted = [line for line in stdout.splitlines() if line.strip()]
         return RunbookResult(
             success=True,
             message=f"Удалено {len(deleted)} файлов логов старше {older_than_days} дней в {log_path}",
-            details=output or "(файлов для удаления не найдено)",
+            details=stdout or "(файлов для удаления не найдено)",
         )
