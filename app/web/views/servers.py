@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from app.checks import CHECK_REGISTRY
-from app.db.models import Server, ServerCheck
+from app.db.models import Server, ServerCheck, SshKey
 from app.db.session import get_session
 from app.web.auth import login_required
 
@@ -33,6 +33,9 @@ async def servers_list(request: Request):
 @router.get("/create", response_class=HTMLResponse)
 @login_required
 async def server_create_form(request: Request):
+    async with get_session() as session:
+        result = await session.execute(select(SshKey).order_by(SshKey.name))
+        ssh_keys = result.scalars().all()
     return templates.TemplateResponse(
         request,
         "server_edit.html",
@@ -41,6 +44,7 @@ async def server_create_form(request: Request):
             "active_page": "servers",
             "action": "/servers/create",
             "title": "Добавить сервер",
+            "ssh_keys": ssh_keys,
         },
     )
 
@@ -53,6 +57,9 @@ async def server_create(request: Request):
     host = (form.get("host") or "").strip()
 
     if not name or not host:
+        async with get_session() as session:
+            result = await session.execute(select(SshKey).order_by(SshKey.name))
+            ssh_keys = result.scalars().all()
         return templates.TemplateResponse(
             request,
             "server_edit.html",
@@ -62,16 +69,17 @@ async def server_create(request: Request):
                 "action": "/servers/create",
                 "title": "Добавить сервер",
                 "error": "Имя и хост обязательны",
+                "ssh_keys": ssh_keys,
             },
         )
 
     async with get_session() as session:
+        ssh_key_id_raw = form.get("ssh_key_id") or ""
         server = Server(
             name=name,
             host=host,
             ssh_user=(form.get("ssh_user") or "deploy").strip(),
-            ssh_key_path=(form.get("ssh_key_path") or "").strip() or None,
-            ssh_password=(form.get("ssh_password") or "").strip() or None,
+            ssh_key_id=int(ssh_key_id_raw) if ssh_key_id_raw else None,
             ssh_port=int(form.get("ssh_port") or 22),
             enabled=form.get("enabled") == "on",
         )
@@ -89,6 +97,8 @@ async def server_edit_form(request: Request, server_id: int):
         server = await session.get(Server, server_id)
         if not server:
             return RedirectResponse("/servers", status_code=302)
+        result = await session.execute(select(SshKey).order_by(SshKey.name))
+        ssh_keys = result.scalars().all()
 
     return templates.TemplateResponse(
         request,
@@ -98,6 +108,7 @@ async def server_edit_form(request: Request, server_id: int):
             "active_page": "servers",
             "action": f"/servers/{server_id}/edit",
             "title": f"Редактировать {server.name}",
+            "ssh_keys": ssh_keys,
         },
     )
 
@@ -112,6 +123,8 @@ async def server_edit(request: Request, server_id: int):
     if not name or not host:
         async with get_session() as session:
             server = await session.get(Server, server_id)
+            result = await session.execute(select(SshKey).order_by(SshKey.name))
+            ssh_keys = result.scalars().all()
         return templates.TemplateResponse(
             request,
             "server_edit.html",
@@ -121,6 +134,7 @@ async def server_edit(request: Request, server_id: int):
                 "action": f"/servers/{server_id}/edit",
                 "title": f"Редактировать {server.name}",
                 "error": "Имя и хост обязательны",
+                "ssh_keys": ssh_keys,
             },
         )
 
@@ -132,8 +146,8 @@ async def server_edit(request: Request, server_id: int):
         server.name = name
         server.host = host
         server.ssh_user = (form.get("ssh_user") or "deploy").strip()
-        server.ssh_key_path = (form.get("ssh_key_path") or "").strip() or None
-        server.ssh_password = (form.get("ssh_password") or "").strip() or None
+        ssh_key_id_raw = form.get("ssh_key_id") or ""
+        server.ssh_key_id = int(ssh_key_id_raw) if ssh_key_id_raw else None
         server.ssh_port = int(form.get("ssh_port") or 22)
         server.enabled = form.get("enabled") == "on"
 

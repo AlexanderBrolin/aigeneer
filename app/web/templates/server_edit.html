@@ -49,22 +49,24 @@
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
-                <!-- SSH Key Path -->
+                <!-- SSH Key -->
                 <div class="col-span-2">
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Путь к SSH ключу</label>
-                    <input type="text" name="ssh_key_path"
-                           value="{{ server.ssh_key_path if server and server.ssh_key_path else '' }}"
-                           placeholder="/root/.ssh/id_rsa"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-xs text-gray-400 mt-1">Путь внутри контейнера. Монтируйте ключи через volume.</p>
-                </div>
-
-                <!-- SSH Password (optional) -->
-                <div class="col-span-2">
-                    <label class="block text-xs font-medium text-gray-500 mb-1">SSH пароль (если нет ключа)</label>
-                    <input type="password" name="ssh_password"
-                           placeholder="Оставьте пустым если используется ключ"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-xs font-medium text-gray-500 mb-1">SSH ключ</label>
+                    <select name="ssh_key_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">По умолчанию (глобальный)</option>
+                        {% for key in ssh_keys %}
+                        <option value="{{ key.id }}"
+                                {{ 'selected' if server and server.ssh_key_id == key.id else '' }}>
+                            {{ key.name }}{% if key.is_default %} (default){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if not ssh_keys %}
+                    <p class="text-xs text-amber-600 mt-1">
+                        Нет SSH ключей. <a href="/settings#ssh" class="underline">Добавьте в Настройках</a>.
+                    </p>
+                    {% endif %}
                 </div>
 
                 <!-- Enabled -->
