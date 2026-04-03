@@ -18,6 +18,28 @@ class AdminUser(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class Setting(Base):
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    is_secret: Mapped[bool] = mapped_column(Boolean, default=False)
+    requires_restart: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class SshKey(Base):
+    __tablename__ = "ssh_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    private_key: Mapped[str] = mapped_column(Text, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
 class Server(Base):
     __tablename__ = "servers"
 
@@ -25,13 +47,13 @@ class Server(Base):
     name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     ssh_user: Mapped[str] = mapped_column(String(128), default="deploy")
-    ssh_key_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    ssh_password: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ssh_key_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("ssh_keys.id"), nullable=True)
     ssh_port: Mapped[int] = mapped_column(Integer, default=22)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_check_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    ssh_key: Mapped["SshKey | None"] = relationship()
     checks: Mapped[list["ServerCheck"]] = relationship(back_populates="server", cascade="all, delete-orphan")
     check_runs: Mapped[list["CheckRun"]] = relationship(back_populates="server")
 
