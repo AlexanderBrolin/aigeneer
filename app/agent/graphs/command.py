@@ -329,3 +329,20 @@ _builder.add_edge("execute_db_query", END)
 async def get_command_graph():
     checkpointer = await get_checkpointer()
     return _builder.compile(checkpointer=checkpointer)
+
+
+async def run_command_graph(state: CommandState, config: dict) -> dict:
+    """Run the command graph with a fresh Redis checkpointer.
+
+    Creates a new Redis connection scoped to this call so it works
+    in the long-lived aiogram event loop without stale connections.
+    """
+    from langgraph.checkpoint.redis.aio import AsyncRedisSaver
+    from app.config import settings
+
+    async with AsyncRedisSaver.from_conn_string(
+        settings.redis_url, ttl={"default_ttl": 1440}
+    ) as checkpointer:
+        await checkpointer.asetup()
+        graph = _builder.compile(checkpointer=checkpointer)
+        return await graph.ainvoke(state, config=config)

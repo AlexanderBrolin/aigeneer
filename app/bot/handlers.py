@@ -77,8 +77,7 @@ async def cmd_start(message: Message) -> None:
 @router.message()
 async def handle_text_command(message: Message) -> None:
     """Route free-text messages through command_graph."""
-    from app.agent.graphs.command import get_command_graph, CommandState
-    from langgraph.types import Command as LGCommand
+    from app.agent.graphs.command import run_command_graph, CommandState
     import uuid
 
     # Check allowed users (DB first, .env fallback)
@@ -101,13 +100,12 @@ async def handle_text_command(message: Message) -> None:
         return
 
     thread_id = f"cmd-{message.from_user.id}-{uuid.uuid4().hex[:8]}"
-    graph = await get_command_graph()
 
     state = CommandState(message=message.text or "")
     config = {"configurable": {"thread_id": thread_id}}
 
     try:
-        result = await graph.ainvoke(state, config=config)
+        result = await run_command_graph(state, config)
         response_text = result.get("response") or "Команда обработана."
 
         # Truncate long responses for Telegram (4096 char limit)
