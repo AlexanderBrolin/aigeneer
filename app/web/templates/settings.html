@@ -272,23 +272,23 @@
                                 </button>
                             </div>
 
-                            <!-- Textarea for key content -->
+                            <!-- Single textarea for key content (used by both text and file modes) -->
                             <textarea x-show="keyInputMode === 'text'" name="private_key" id="key_textarea" rows="8"
                                       placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."
                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
 
-                            <!-- Hidden textarea for file mode -->
-                            <textarea x-show="false" name="private_key" id="key_textarea_file"></textarea>
+                            <!-- Hidden input mirrors textarea value for file mode (no duplicate name!) -->
+                            <input type="hidden" name="private_key" id="key_hidden" x-ref="keyHidden" disabled>
 
                             <!-- File input -->
                             <div x-show="keyInputMode === 'file'">
+                                <p x-show="$refs.keyHidden && document.getElementById('key_textarea').value" class="mb-2 text-xs text-green-600">Файл загружен</p>
                                 <input type="file" accept=".pem,.key,*"
                                        @change="
                                            const file = $event.target.files[0];
                                            if (file) {
                                                const reader = new FileReader();
                                                reader.onload = (e) => {
-                                                   document.getElementById('key_textarea_file').value = e.target.result;
                                                    document.getElementById('key_textarea').value = e.target.result;
                                                };
                                                reader.readAsText(file);
