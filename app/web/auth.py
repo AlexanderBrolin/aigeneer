@@ -4,11 +4,10 @@ from functools import wraps
 
 from fastapi import Request
 from fastapi.responses import RedirectResponse
-from itsdangerous import URLSafeSerializer
 
 from app.config import settings
-
-serializer = URLSafeSerializer(settings.secret_key)
+from app.db.session import get_session
+from app.services.auth import verify_credentials_db
 
 
 def login_required(func):
@@ -23,7 +22,10 @@ def login_required(func):
     return wrapper
 
 
-def verify_credentials(username: str, password: str) -> bool:
-    """Check credentials against config (for initial setup) or DB."""
-    # Simple config-based auth for now; DB-based AdminUser comes in E11
+async def verify_credentials(username: str, password: str) -> bool:
+    """Check credentials: DB first, then .env fallback."""
+    async with get_session() as session:
+        if await verify_credentials_db(session, username, password):
+            return True
+    # Fallback to .env (emergency access when no DB users exist)
     return username == settings.admin_username and password == settings.admin_password
