@@ -26,13 +26,22 @@ logger = logging.getLogger(__name__)
 
 async def _notify_tg(incident: dict, thread_id: str, host: str) -> None:
     """Send incident notification to Telegram."""
-    if not settings.tg_chat_id or not settings.tg_bot_token:
-        logger.warning("TG not configured (TG_CHAT_ID or TG_BOT_TOKEN missing), skipping notification")
+    from app.services.settings import SettingsService
+
+    svc = SettingsService(secret_key=settings.secret_key)
+    async with get_session() as session:
+        app_settings = await svc.get_cached(session)
+
+    chat_id = app_settings.get("tg_chat_id") or settings.tg_chat_id
+    bot_token = app_settings.get("tg_bot_token") or settings.tg_bot_token
+
+    if not chat_id or not bot_token:
+        logger.warning("TG not configured, skipping notification")
         return
     bot = get_bot()
     await notify_incident(
         bot=bot,
-        chat_id=settings.tg_chat_id,
+        chat_id=chat_id,
         thread_id=thread_id,
         interrupt_data={"incident": incident, "host": host},
     )
@@ -92,12 +101,8 @@ async def _collect_task_async(server_id: int) -> dict:
         # Snapshot server data before leaving the session
         server_name = server.name
         server_host = server.host
-        host_config = {
-            "host": server.host,
-            "ssh_user": server.ssh_user,
-            "ssh_key_path": server.ssh_key_path,
-            "ssh_port": server.ssh_port,
-        }
+        from app.agent.tool_provider import resolve_ssh_config
+        host_config = await resolve_ssh_config(session, server, settings.secret_key)
         enabled_checks = [
             {"check_name": c.check_name, "params": dict(c.params) if c.params else {}}
             for c in server.checks
