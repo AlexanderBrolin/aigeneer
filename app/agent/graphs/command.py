@@ -61,6 +61,7 @@ class CommandState:
     message: str = ""
     host: str = ""
     intent: str = ""
+    db_query_type: str = ""
     tool_results: list[str] = field(default_factory=list)
     response: str = ""
     requires_confirm: bool = False
@@ -92,6 +93,9 @@ async def classify_intent(state: CommandState) -> dict:
         "pending_command": None,
     }
 
+    if result["intent"] == "db_query":
+        result["db_query_type"] = data.get("db_query_type", "servers")
+
     if result["intent"] == "write" and data.get("runbook"):
         result["pending_command"] = {
             "runbook": data["runbook"],
@@ -102,7 +106,9 @@ async def classify_intent(state: CommandState) -> dict:
     return result
 
 
-def route_after_classify(state: CommandState) -> Literal["execute_read", "confirm", "__end__"]:
+def route_after_classify(state: CommandState) -> Literal["execute_read", "confirm", "execute_db_query", "__end__"]:
+    if state.intent == "db_query":
+        return "execute_db_query"
     if state.intent == "write" and state.requires_confirm:
         return "confirm"
     if state.intent in ("read", "unknown"):
@@ -248,17 +254,76 @@ async def execute_write_node(state: CommandState) -> dict:
     return {"response": response}
 
 
+async def execute_db_query_node(state: CommandState) -> dict:
+    """Handle DB-only queries: server list, incidents, check runs."""
+    from app.db.session import get_session
+    from app.db.models import Server, Incident, CheckRun
+    from sqlalchemy import select
+
+    query_type = state.db_query_type or "servers"
+
+    async with get_session() as session:
+        if query_type == "servers":
+            result = await session.execute(select(Server).order_by(Server.name))
+            servers = result.scalars().all()
+            if not servers:
+                return {"response": "Нет добавленных серверов."}
+            lines = ["<b>Серверы:</b>"]
+            for s in servers:
+                status = "✅" if s.enabled else "⏸"
+                last = s.last_check_at.strftime("%d.%m %H:%M") if s.last_check_at else "—"
+                lines.append(f"{status} <b>{s.name}</b> ({s.host}) — последняя проверка: {last}")
+            return {"response": "\n".join(lines)}
+
+        elif query_type == "incidents":
+            result = await session.execute(
+                select(Incident)
+                .where(Incident.status.in_(["new", "notified"]))
+                .order_by(Incident.created_at.desc())
+                .limit(20)
+            )
+            incidents = result.scalars().all()
+            if not incidents:
+                return {"response": "Открытых инцидентов нет. 👍"}
+            lines = [f"<b>Открытые инциденты ({len(incidents)}):</b>"]
+            for inc in incidents:
+                emoji = {"critical": "🔴", "warning": "🟡", "info": "🔵"}.get(inc.severity, "⚪")
+                dt = inc.created_at.strftime("%d.%m %H:%M") if inc.created_at else ""
+                lines.append(f"{emoji} [{inc.host}] {inc.problem_type} — {dt}")
+            return {"response": "\n".join(lines)}
+
+        elif query_type == "check_runs":
+            result = await session.execute(
+                select(CheckRun)
+                .order_by(CheckRun.started_at.desc())
+                .limit(10)
+            )
+            runs = result.scalars().all()
+            if not runs:
+                return {"response": "Проверок пока не было."}
+            lines = ["<b>Последние проверки:</b>"]
+            for r in runs:
+                emoji = {"ok": "✅", "incident": "⚠️", "error": "❌", "running": "🔄"}.get(r.status, "❓")
+                dt = r.started_at.strftime("%d.%m %H:%M") if r.started_at else ""
+                lines.append(f"{emoji} [{r.host}] {r.check_name} — {r.status} ({dt})")
+            return {"response": "\n".join(lines)}
+
+    return {"response": "Неизвестный тип запроса."}
+
+
 # Build the graph
 _builder = StateGraph(CommandState)
 _builder.add_node("classify", classify_intent)
 _builder.add_node("execute_read", execute_read_node)
 _builder.add_node("confirm", confirm_node)
 _builder.add_node("execute_write", execute_write_node)
+_builder.add_node("execute_db_query", execute_db_query_node)
 
 _builder.add_edge(START, "classify")
 _builder.add_conditional_edges("classify", route_after_classify)
 _builder.add_edge("execute_read", END)
 _builder.add_edge("execute_write", END)
+_builder.add_edge("execute_db_query", END)
 
 
 async def get_command_graph():
