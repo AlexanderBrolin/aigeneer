@@ -81,7 +81,23 @@ async def handle_text_command(message: Message) -> None:
     from langgraph.types import Command as LGCommand
     import uuid
 
-    if message.from_user and str(message.from_user.id) not in settings.tg_allowed_user_ids:
+    # Check allowed users (DB first, .env fallback)
+    allowed_ids = settings.tg_allowed_user_ids  # .env fallback
+    try:
+        from app.services.settings import SettingsService
+        from app.config import settings as env_settings
+        from app.db.session import get_session
+
+        svc = SettingsService(secret_key=env_settings.secret_key)
+        async with get_session() as session:
+            app_settings = await svc.get_cached(session)
+        allowed_raw = app_settings.get("tg_allowed_users") or ""
+        if allowed_raw:
+            allowed_ids = [int(uid.strip()) for uid in allowed_raw.split(",") if uid.strip()]
+    except Exception:
+        pass  # use .env fallback
+
+    if message.from_user and allowed_ids and message.from_user.id not in allowed_ids:
         return
 
     thread_id = f"cmd-{message.from_user.id}-{uuid.uuid4().hex[:8]}"
@@ -93,6 +109,13 @@ async def handle_text_command(message: Message) -> None:
     try:
         result = await graph.ainvoke(state, config=config)
         response_text = result.get("response") or "Команда обработана."
+
+        # Truncate long responses for Telegram (4096 char limit)
+        MAX_TG_LEN = 4000
+        if len(response_text) > MAX_TG_LEN:
+            total = len(response_text)
+            response_text = response_text[:MAX_TG_LEN] + f"\n\n<i>...обрезано ({total} символов)</i>"
+
         await message.answer(response_text)
 
     except Exception as exc:
