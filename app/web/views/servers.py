@@ -205,6 +205,7 @@ async def server_checks_update(request: Request, server_id: int):
         )
         for sc in result.scalars().all():
             await session.delete(sc)
+        await session.flush()
 
         for check_name in CHECK_REGISTRY:
             enabled = form.get(f"check_{check_name}_enabled") == "on"

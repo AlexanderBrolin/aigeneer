@@ -55,7 +55,7 @@ class Server(Base):
 
     ssh_key: Mapped["SshKey | None"] = relationship()
     checks: Mapped[list["ServerCheck"]] = relationship(back_populates="server", cascade="all, delete-orphan")
-    check_runs: Mapped[list["CheckRun"]] = relationship(back_populates="server")
+    check_runs: Mapped[list["CheckRun"]] = relationship(back_populates="server", cascade="all, delete-orphan")
 
 
 class ServerCheck(Base):
@@ -77,7 +77,7 @@ class CheckRun(Base):
     __tablename__ = "check_runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    server_id: Mapped[int] = mapped_column(Integer, ForeignKey("servers.id"), nullable=False)
+    server_id: Mapped[int] = mapped_column(Integer, ForeignKey("servers.id", ondelete="CASCADE"), nullable=False)
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     check_name: Mapped[str] = mapped_column(String(128), nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -95,7 +95,7 @@ class Incident(Base):
     __tablename__ = "incidents"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    check_run_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("check_runs.id"), nullable=True)
+    check_run_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("check_runs.id", ondelete="SET NULL"), nullable=True)
     thread_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     severity: Mapped[str] = mapped_column(
