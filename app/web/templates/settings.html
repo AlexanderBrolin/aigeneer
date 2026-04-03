@@ -1,0 +1,463 @@
+{% extends "base.html" %}
+{% set active_page = "settings" %}
+
+{% block page_title %}Настройки{% endblock %}
+
+{% block content %}
+<div x-data="{
+    tab: 'llm',
+    showKeyModal: false,
+    editKeyId: null,
+    editKeyName: '',
+    editKeyDefault: false,
+    keyInputMode: 'text',
+    showAddUser: false,
+    editUserId: null,
+    pwVisible: {},
+    init() {
+        const hash = location.hash.replace('#', '');
+        if (['llm','telegram','ssh','schedule','users'].includes(hash)) {
+            this.tab = hash;
+        }
+    }
+}">
+
+    <!-- Tab bar -->
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="flex gap-1 -mb-px">
+            <button @click="tab = 'llm'; history.replaceState(null, '', '#llm')"
+                    :class="tab === 'llm' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition-colors">
+                LLM
+            </button>
+            <button @click="tab = 'telegram'; history.replaceState(null, '', '#telegram')"
+                    :class="tab === 'telegram' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition-colors">
+                Telegram
+            </button>
+            <button @click="tab = 'ssh'; history.replaceState(null, '', '#ssh')"
+                    :class="tab === 'ssh' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition-colors">
+                SSH
+            </button>
+            <button @click="tab = 'schedule'; history.replaceState(null, '', '#schedule')"
+                    :class="tab === 'schedule' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition-colors">
+                Расписание
+            </button>
+            <button @click="tab = 'users'; history.replaceState(null, '', '#users')"
+                    :class="tab === 'users' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="px-4 py-3 text-sm font-medium border-b-2 transition-colors">
+                Пользователи
+            </button>
+        </nav>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Tab: LLM -->
+    <!-- ================================================================ -->
+    <div x-show="tab === 'llm'" x-cloak>
+        <form method="POST" action="/settings" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-2xl">
+            <input type="hidden" name="category" value="llm">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">LLM / AI Tunnel</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">URL API</label>
+                    <input type="text" name="aitunnel_base_url"
+                           value="{{ masked.aitunnel_base_url or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div x-data="{ show: false }">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API ключ</label>
+                    <div class="relative">
+                        <input :type="show ? 'text' : 'password'" name="aitunnel_api_key"
+                               value="{{ masked.aitunnel_api_key or '' }}"
+                               class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <button type="button" @click="show = !show"
+                                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <svg x-show="!show" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <svg x-show="show" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Основная модель</label>
+                    <input type="text" name="model_main"
+                           value="{{ masked.model_main or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Быстрая модель</label>
+                    <input type="text" name="model_fast"
+                           value="{{ masked.model_fast or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Tab: Telegram -->
+    <!-- ================================================================ -->
+    <div x-show="tab === 'telegram'" x-cloak>
+        <form method="POST" action="/settings" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-2xl">
+            <input type="hidden" name="category" value="telegram">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Telegram</h2>
+
+            <div class="space-y-4">
+                <div x-data="{ show: false }">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Токен бота</label>
+                    <div class="relative">
+                        <input :type="show ? 'text' : 'password'" name="tg_bot_token"
+                               value="{{ masked.tg_bot_token or '' }}"
+                               class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <button type="button" @click="show = !show"
+                                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <svg x-show="!show" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <svg x-show="show" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Chat ID</label>
+                    <input type="text" name="tg_chat_id"
+                           value="{{ masked.tg_chat_id or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Разрешённые пользователи (через запятую)</label>
+                    <input type="text" name="tg_allowed_users"
+                           value="{{ masked.tg_allowed_users or '' }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Tab: SSH -->
+    <!-- ================================================================ -->
+    <div x-show="tab === 'ssh'" x-cloak>
+        <!-- SSH default user setting -->
+        <form method="POST" action="/settings" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-2xl mb-6">
+            <input type="hidden" name="category" value="ssh">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">SSH настройки</h2>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">SSH пользователь по умолчанию</label>
+                <input type="text" name="ssh_default_user"
+                       value="{{ masked.ssh_default_user or '' }}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 max-w-md">
+            </div>
+
+            <div class="mt-4">
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+
+        <!-- SSH Keys section -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">SSH ключи</h2>
+                <button @click="showKeyModal = true; editKeyId = null; editKeyName = ''; editKeyDefault = false; keyInputMode = 'text'"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    + Добавить SSH ключ
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                        <tr>
+                            <th class="px-6 py-3 text-left">Имя</th>
+                            <th class="px-6 py-3 text-left">По умолчанию</th>
+                            <th class="px-6 py-3 text-left">Создан</th>
+                            <th class="px-6 py-3 text-left">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for key in ssh_keys %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-3 font-medium text-gray-800">{{ key.name }}</td>
+                            <td class="px-6 py-3">
+                                {% if key.is_default %}
+                                <span class="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">default</span>
+                                {% else %}
+                                <span class="text-gray-400 text-xs">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-gray-400 text-xs">
+                                {{ key.created_at.strftime('%d.%m.%Y %H:%M') if key.created_at else '-' }}
+                            </td>
+                            <td class="px-6 py-3">
+                                <div class="flex items-center gap-2">
+                                    <button @click="showKeyModal = true; editKeyId = {{ key.id }}; editKeyName = '{{ key.name }}'; editKeyDefault = {{ 'true' if key.is_default else 'false' }}; keyInputMode = 'text'"
+                                            class="text-xs text-blue-600 hover:text-blue-800">Изменить</button>
+                                    <form method="POST" action="/settings/ssh-keys/{{ key.id }}/delete"
+                                          onsubmit="return confirm('Удалить ключ {{ key.name }}?')"
+                                          class="inline">
+                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not ssh_keys %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                Нет SSH ключей
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SSH Key Modal -->
+        <div x-show="showKeyModal" x-cloak
+             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+             @keydown.escape.window="showKeyModal = false">
+            <div class="bg-white rounded-xl shadow-lg w-full max-w-lg mx-4 p-6"
+                 @click.outside="showKeyModal = false">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4"
+                    x-text="editKeyId ? 'Редактировать SSH ключ' : 'Добавить SSH ключ'"></h3>
+
+                <form :action="editKeyId ? '/settings/ssh-keys/' + editKeyId : '/settings/ssh-keys'"
+                      method="POST">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Имя ключа</label>
+                            <input type="text" name="name" x-model="editKeyName" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <div x-show="!editKeyId">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Приватный ключ</label>
+
+                            <!-- Toggle text/file -->
+                            <div class="flex gap-2 mb-2">
+                                <button type="button" @click="keyInputMode = 'text'"
+                                        :class="keyInputMode === 'text' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+                                        class="px-3 py-1 rounded text-xs font-medium">
+                                    Вставить текст
+                                </button>
+                                <button type="button" @click="keyInputMode = 'file'"
+                                        :class="keyInputMode === 'file' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+                                        class="px-3 py-1 rounded text-xs font-medium">
+                                    Загрузить файл
+                                </button>
+                            </div>
+
+                            <!-- Textarea for key content -->
+                            <textarea x-show="keyInputMode === 'text'" name="private_key" id="key_textarea" rows="8"
+                                      placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+
+                            <!-- Hidden textarea for file mode -->
+                            <textarea x-show="false" name="private_key" id="key_textarea_file"></textarea>
+
+                            <!-- File input -->
+                            <div x-show="keyInputMode === 'file'">
+                                <input type="file" accept=".pem,.key,*"
+                                       @change="
+                                           const file = $event.target.files[0];
+                                           if (file) {
+                                               const reader = new FileReader();
+                                               reader.onload = (e) => {
+                                                   document.getElementById('key_textarea_file').value = e.target.result;
+                                                   document.getElementById('key_textarea').value = e.target.result;
+                                               };
+                                               reader.readAsText(file);
+                                           }
+                                       "
+                                       class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" name="is_default" id="key_is_default" x-model="editKeyDefault"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <label for="key_is_default" class="text-sm text-gray-700">Использовать по умолчанию</label>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" @click="showKeyModal = false"
+                                class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+                            Отмена
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-medium">
+                            <span x-text="editKeyId ? 'Сохранить' : 'Добавить'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Tab: Schedule -->
+    <!-- ================================================================ -->
+    <div x-show="tab === 'schedule'" x-cloak>
+        <form method="POST" action="/settings" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-2xl">
+            <input type="hidden" name="category" value="schedule">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Расписание проверок</h2>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Интервал проверок (минуты)</label>
+                <input type="number" name="check_interval_minutes" min="1" max="1440"
+                       value="{{ masked.check_interval_minutes or '5' }}"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 max-w-xs">
+            </div>
+
+            <div class="mt-6">
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Tab: Users -->
+    <!-- ================================================================ -->
+    <div x-show="tab === 'users'" x-cloak>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">Пользователи</h2>
+                <button @click="showAddUser = !showAddUser"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                    + Добавить пользователя
+                </button>
+            </div>
+
+            <!-- Add user form (inline, toggled) -->
+            <div x-show="showAddUser" x-cloak class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <form method="POST" action="/settings/users" class="flex flex-wrap items-end gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Логин</label>
+                        <input type="text" name="username" required
+                               class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+                        <input type="password" name="password" required
+                               class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                            Создать
+                        </button>
+                        <button type="button" @click="showAddUser = false"
+                                class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">
+                            Отмена
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
+                        <tr>
+                            <th class="px-6 py-3 text-left">Логин</th>
+                            <th class="px-6 py-3 text-left">Активен</th>
+                            <th class="px-6 py-3 text-left">Создан</th>
+                            <th class="px-6 py-3 text-left">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for user in users %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-3 font-medium text-gray-800">{{ user.username }}</td>
+                            <td class="px-6 py-3">
+                                {% if user.is_active %}
+                                <span class="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">Активен</span>
+                                {% else %}
+                                <span class="px-2 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">Неактивен</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3 text-gray-400 text-xs">
+                                {{ user.created_at.strftime('%d.%m.%Y %H:%M') if user.created_at else '-' }}
+                            </td>
+                            <td class="px-6 py-3">
+                                <div class="flex items-center gap-2">
+                                    <button @click="editUserId = editUserId === {{ user.id }} ? null : {{ user.id }}"
+                                            class="text-xs text-blue-600 hover:text-blue-800">Изменить</button>
+                                    <form method="POST" action="/settings/users/{{ user.id }}/delete"
+                                          onsubmit="return confirm('Удалить пользователя {{ user.username }}?')"
+                                          class="inline">
+                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Удалить</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Inline edit form for user -->
+                        <tr x-show="editUserId === {{ user.id }}" x-cloak>
+                            <td colspan="4" class="px-6 py-3 bg-gray-50">
+                                <form method="POST" action="/settings/users/{{ user.id }}" class="flex flex-wrap items-end gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Новый пароль (необязательно)</label>
+                                        <input type="password" name="password" placeholder="Оставить прежний"
+                                               class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" name="is_active" id="user_active_{{ user.id }}"
+                                               {{ 'checked' if user.is_active else '' }}
+                                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <label for="user_active_{{ user.id }}" class="text-sm text-gray-700">Активен</label>
+                                    </div>
+                                    <button type="submit"
+                                            class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+                                        Сохранить
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not users %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-400">
+                                Нет пользователей
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}

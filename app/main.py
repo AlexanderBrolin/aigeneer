@@ -60,6 +60,7 @@ from app.web.views.servers import router as servers_router  # noqa: E402
 from app.web.views.incidents import router as incidents_router  # noqa: E402
 from app.web.views.check_runs import router as check_runs_router  # noqa: E402
 from app.web.views.recommendations import router as recommendations_router  # noqa: E402
+from app.web.views.settings import router as settings_router  # noqa: E402
 from app.web.api import router as api_router  # noqa: E402
 
 app.include_router(web_router)
@@ -68,6 +69,7 @@ app.include_router(servers_router)
 app.include_router(incidents_router)
 app.include_router(check_runs_router)
 app.include_router(recommendations_router)
+app.include_router(settings_router)
 app.include_router(api_router)
 
 
