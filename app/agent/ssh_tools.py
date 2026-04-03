@@ -26,19 +26,33 @@ async def _ssh_run(
     host: str,
     command: str,
     ssh_user: str = "deploy",
-    ssh_key_path: str = "~/.ssh/id_rsa",
+    ssh_key_path: str | None = None,
+    ssh_key_content: str | None = None,
     ssh_port: int = 22,
 ) -> dict[str, Any]:
-    """Execute a command on a remote host via asyncssh and return structured result."""
-    key_path = os.path.expanduser(ssh_key_path)
+    """Execute a command on a remote host via asyncssh and return structured result.
+
+    Authentication priority:
+    1. ``ssh_key_content`` — raw PEM key string (decrypted from DB)
+    2. ``ssh_key_path``    — path to a key file on disk
+    If neither is provided, asyncssh will try the SSH agent / default keys.
+    """
     try:
-        async with asyncssh.connect(
-            host,
-            port=ssh_port,
-            username=ssh_user,
-            client_keys=[key_path],
-            known_hosts=None,
-        ) as conn:
+        connect_kwargs: dict[str, Any] = {
+            "host": host,
+            "port": ssh_port,
+            "username": ssh_user,
+            "known_hosts": None,
+        }
+
+        if ssh_key_content:
+            import_key = asyncssh.import_private_key(ssh_key_content)
+            connect_kwargs["client_keys"] = [import_key]
+        elif ssh_key_path:
+            key_path = os.path.expanduser(ssh_key_path)
+            connect_kwargs["client_keys"] = [key_path]
+
+        async with asyncssh.connect(**connect_kwargs) as conn:
             result = await conn.run(command)
             return {
                 "stdout": result.stdout or "",
@@ -117,7 +131,7 @@ class SSHExecTool(BaseTool):
         ssh_key_path: str = "~/.ssh/id_rsa",
         ssh_port: int = 22,
     ) -> dict[str, Any]:
-        return await _ssh_run(host, command, ssh_user, ssh_key_path, ssh_port)
+        return await _ssh_run(host, command, ssh_user, ssh_key_path=ssh_key_path, ssh_port=ssh_port)
 
 
 class SSHReadFileTool(BaseTool):
@@ -147,7 +161,7 @@ class SSHReadFileTool(BaseTool):
         else:
             cmd = f"cat {path}"
 
-        result = await _ssh_run(host, cmd, ssh_user, ssh_key_path, ssh_port)
+        result = await _ssh_run(host, cmd, ssh_user, ssh_key_path=ssh_key_path, ssh_port=ssh_port)
         return {"content": result["stdout"], **{k: v for k, v in result.items() if k != "stdout"}}
 
 
@@ -171,7 +185,7 @@ class SSHSystemctlStatusTool(BaseTool):
         ssh_key_path: str = "~/.ssh/id_rsa",
         ssh_port: int = 22,
     ) -> dict[str, Any]:
-        result = await _ssh_run(host, f"systemctl is-active {service}", ssh_user, ssh_key_path, ssh_port)
+        result = await _ssh_run(host, f"systemctl is-active {service}", ssh_user, ssh_key_path=ssh_key_path, ssh_port=ssh_port)
         status_text = result["stdout"].strip()
         return {
             "status": status_text,
@@ -202,7 +216,7 @@ class SSHSystemctlRestartTool(BaseTool):
         ssh_key_path: str = "~/.ssh/id_rsa",
         ssh_port: int = 22,
     ) -> dict[str, Any]:
-        return await _ssh_run(host, f"sudo systemctl restart {service}", ssh_user, ssh_key_path, ssh_port)
+        return await _ssh_run(host, f"sudo systemctl restart {service}", ssh_user, ssh_key_path=ssh_key_path, ssh_port=ssh_port)
 
 
 class SSHMysqlExecTool(BaseTool):
@@ -228,7 +242,7 @@ class SSHMysqlExecTool(BaseTool):
         ssh_port: int = 22,
     ) -> dict[str, Any]:
         cmd = self._build_mysql_command(query)
-        result = await _ssh_run(host, cmd, ssh_user, ssh_key_path, ssh_port)
+        result = await _ssh_run(host, cmd, ssh_user, ssh_key_path=ssh_key_path, ssh_port=ssh_port)
         return {"output": result["stdout"], "stderr": result["stderr"], "exit_code": result["exit_code"]}
 
     @staticmethod

@@ -98,7 +98,10 @@ class TestSSHExecTool:
 
         mock_connect.assert_called_once()
         call_kwargs = mock_connect.call_args
-        assert call_kwargs[0][0] == "web-01" or call_kwargs[1].get("host") == "web-01"
+        # _ssh_run now passes all args as kwargs via **connect_kwargs
+        positional_host = call_kwargs[0][0] if call_kwargs[0] else None
+        kwarg_host = call_kwargs[1].get("host")
+        assert positional_host == "web-01" or kwarg_host == "web-01"
 
     async def test_arun_handles_connection_error(self):
         with patch(
