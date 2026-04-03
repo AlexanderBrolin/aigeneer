@@ -45,12 +45,23 @@ async def _ssh_run(
             "known_hosts": None,
         }
 
+        client_keys: list[Any] = []
         if ssh_key_content:
-            import_key = asyncssh.import_private_key(ssh_key_content)
-            connect_kwargs["client_keys"] = [import_key]
-        elif ssh_key_path:
-            key_path = os.path.expanduser(ssh_key_path)
-            connect_kwargs["client_keys"] = [key_path]
+            client_keys.append(asyncssh.import_private_key(ssh_key_content))
+        if ssh_key_path:
+            client_keys.append(os.path.expanduser(ssh_key_path))
+        if client_keys:
+            # Provided keys first; also keep default key discovery
+            # so ~/.ssh/ keys still work as fallback
+            connect_kwargs["client_keys"] = client_keys
+            connect_kwargs["agent_path"] = None  # no agent, but keep default keys below
+        # NOTE: when client_keys is set, asyncssh skips ~/.ssh/ auto-discovery.
+        # Re-add default paths so mounted keys still work as fallback.
+        if client_keys:
+            for default_key in ("~/.ssh/id_rsa", "~/.ssh/id_ed25519", "~/.ssh/id_ecdsa"):
+                expanded = os.path.expanduser(default_key)
+                if os.path.isfile(expanded) and expanded not in [str(k) for k in client_keys]:
+                    client_keys.append(expanded)
 
         async with asyncssh.connect(**connect_kwargs) as conn:
             result = await conn.run(command)
