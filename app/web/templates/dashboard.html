@@ -8,6 +8,16 @@
 {% endblock %}
 
 {% block content %}
+{% if alerts %}
+<div class="mb-6 space-y-2">
+    {% for alert in alerts %}
+    <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+        <span class="text-sm text-amber-800">{{ alert.msg }}</span>
+        <a href="{{ alert.link }}" class="text-sm text-amber-600 underline hover:text-amber-800">Настроить</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 <!-- Stat cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

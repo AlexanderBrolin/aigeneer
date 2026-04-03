@@ -6,8 +6,10 @@ from fastapi import APIRouter, Request
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
-from app.db.models import CheckRun, Incident, Server
+from app.db.models import CheckRun, Incident, Server, SshKey
 from app.db.session import get_session
+from app.config import settings as env_settings
+from app.services.settings import SettingsService
 from app.web.auth import login_required
 
 router = APIRouter()
@@ -79,6 +81,23 @@ async def dashboard(request: Request):
         )
         recent_incidents = result.scalars().all()
 
+        # Check for missing configuration
+        alerts = []
+        svc = SettingsService(secret_key=env_settings.secret_key)
+        app_settings = await svc.get_cached(session)
+
+        if not app_settings.get("aitunnel_api_key") and not env_settings.aitunnel_api_key:
+            alerts.append({"msg": "API ключ LLM не задан", "link": "/settings#llm"})
+
+        if not app_settings.get("tg_bot_token") and not env_settings.tg_bot_token:
+            alerts.append({"msg": "Telegram бот не настроен", "link": "/settings#telegram"})
+
+        ssh_key_count = (await session.execute(
+            select(func.count(SshKey.id))
+        )).scalar() or 0
+        if ssh_key_count == 0:
+            alerts.append({"msg": "Нет SSH ключей", "link": "/settings#ssh"})
+
     stats = {
         "servers_total": servers_total,
         "servers_enabled": servers_enabled,
@@ -91,5 +110,5 @@ async def dashboard(request: Request):
     }
 
     return templates.TemplateResponse(
-        request, "dashboard.html", {"stats": stats, "recent_incidents": recent_incidents}
+        request, "dashboard.html", {"stats": stats, "recent_incidents": recent_incidents, "alerts": alerts}
     )
