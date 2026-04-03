@@ -17,11 +17,13 @@ NORMALIZE_PROMPT = """
   - `params`: параметры для runbook
 
 Доступные runbooks:
-- restart_service — params: {host, service, ssh_user, ssh_key_path, ssh_port}
-- restart_replication — params: {host, ssh_user, ssh_key_path, ssh_port}
-- clear_old_logs — params: {host, log_path, older_than_days, ssh_user, ssh_key_path, ssh_port}
-- show_slow_queries — params: {host, lines, log_path, ssh_user, ssh_key_path, ssh_port} (safe, read-only)
+- restart_service — params: {host, service}
+- restart_replication — params: {host}
+- clear_old_logs — params: {host, log_path, older_than_days}
+- show_slow_queries — params: {host, lines, log_path} (safe, read-only)
 - show_replication_status — params: {} (safe, read-only, показывает SHOW SLAVE STATUS)
+
+Примечание: параметры SSH (ssh_user, ssh_port, ssh_key_content) добавляются автоматически — НЕ включай их в params.
 
 Верни ТОЛЬКО валидный JSON массив, без markdown, без пояснений.
 """.strip()

@@ -52,17 +52,15 @@ async def normalize_node(state: AnalyzeState) -> dict:
         return {"incidents": []}
 
     # Inject host_config into incident action params for SSH access
+    ssh_params = {
+        k: v for k, v in state.host_config.items()
+        if k in ("ssh_user", "ssh_key_content", "ssh_port")
+    }
     for incident in incidents:
         for action in incident.get("dangerous_actions", []):
-            action["params"].update({
-                k: v for k, v in state.host_config.items()
-                if k in ("ssh_user", "ssh_key_path", "ssh_port")
-            })
+            action["params"].update(ssh_params)
         for action in incident.get("safe_actions", []):
-            action["params"].update({
-                k: v for k, v in state.host_config.items()
-                if k in ("ssh_user", "ssh_key_path", "ssh_port")
-            })
+            action["params"].update(ssh_params)
 
     return {"incidents": incidents}
 

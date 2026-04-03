@@ -98,23 +98,21 @@ async def execute_read_node(state: CommandState) -> dict:
 
     host_config: dict = {}
     if state.host:
-        # Try to load SSH config from DB
         try:
             from app.db.session import get_session
             from app.db.models import Server
+            from app.agent.tool_provider import resolve_ssh_config
+            from app.config import settings
             from sqlalchemy import select
 
             async with get_session() as session:
                 row = (await session.execute(
-                    select(Server).where(Server.host == state.host)
+                    select(Server).where(
+                        (Server.host == state.host) | (Server.name == state.host)
+                    )
                 )).scalar_one_or_none()
                 if row:
-                    host_config = {
-                        "host": row.host,
-                        "ssh_user": row.ssh_user or "deploy",
-                        "ssh_key_path": row.ssh_key_path or "",
-                        "ssh_port": row.ssh_port or 22,
-                    }
+                    host_config = await resolve_ssh_config(session, row, settings.secret_key)
         except Exception as exc:
             logger.warning("Failed to load server config: %s", exc)
 
@@ -123,7 +121,6 @@ async def execute_read_node(state: CommandState) -> dict:
         host_config = {
             "host": state.host,
             "ssh_user": settings.ssh_default_user,
-            "ssh_key_path": settings.ssh_default_key_path,
             "ssh_port": 22,
         }
 
@@ -202,19 +199,18 @@ async def execute_write_node(state: CommandState) -> dict:
         try:
             from app.db.session import get_session
             from app.db.models import Server
+            from app.agent.tool_provider import resolve_ssh_config
+            from app.config import settings
             from sqlalchemy import select
 
             async with get_session() as session:
                 row = (await session.execute(
-                    select(Server).where(Server.host == state.host)
+                    select(Server).where(
+                        (Server.host == state.host) | (Server.name == state.host)
+                    )
                 )).scalar_one_or_none()
                 if row:
-                    host_config = {
-                        "host": row.host,
-                        "ssh_user": row.ssh_user or "deploy",
-                        "ssh_key_path": row.ssh_key_path or "",
-                        "ssh_port": row.ssh_port or 22,
-                    }
+                    host_config = await resolve_ssh_config(session, row, settings.secret_key)
         except Exception as exc:
             logger.warning("Failed to load server config for write: %s", exc)
 
