@@ -114,6 +114,10 @@ async def classify_intent(state: CommandState) -> dict:
     if quick:
         return quick
 
+    # Refresh LLM settings cache (model names, API keys from DB)
+    from app.agent.nodes import _refresh_llm_cache
+    await _refresh_llm_cache()
+
     llm = get_fast_llm()
     try:
         resp = await llm.ainvoke([
@@ -165,6 +169,8 @@ def route_after_classify(state: CommandState) -> Literal["execute_read", "confir
 async def execute_read_node(state: CommandState) -> dict:
     """Execute read-only commands via SSH tools + LLM synthesis."""
     from app.agent.tool_provider import get_read_tools
+    from app.agent.nodes import _refresh_llm_cache
+    await _refresh_llm_cache()
 
     host_config: dict = {}
     if state.host:
