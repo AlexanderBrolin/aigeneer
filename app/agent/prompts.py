@@ -21,7 +21,15 @@ NORMALIZE_PROMPT = """
 - restart_replication — params: {host}
 - clear_old_logs — params: {host, log_path, older_than_days}
 - show_slow_queries — params: {host, lines, log_path} (safe, read-only)
-- show_replication_status — params: {} (safe, read-only, показывает SHOW SLAVE STATUS)
+- show_replication_status — params: {} (safe, read-only)
+- show_top_processes — params: {count} (safe, read-only)
+- show_connections — params: {count} (safe, read-only)
+- show_disk_usage — params: {path, count} (safe, read-only)
+- mysql_processlist — params: {} (safe, read-only)
+- check_backup — params: {backup_path} (safe, read-only)
+- rotate_logs — params: {config} (dangerous)
+- kill_process — params: {pid, signal} (dangerous)
+- free_memory — params: {} (dangerous)
 
 Примечание: параметры SSH (ssh_user, ssh_port, ssh_key_content) добавляются автоматически — НЕ включай их в params.
 

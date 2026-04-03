@@ -22,19 +22,37 @@ CLASSIFY_PROMPT = """
 Classify the user's DevOps command. Return JSON only (no markdown).
 
 Fields:
-- intent: "read" | "write" | "unknown"
+- intent: "read" | "write" | "db_query" | "unknown"
 - summary: short description of the action
 - host: server hostname or "" if unknown
 - requires_confirm: true only for write operations
-- runbook: runbook name if write op (restart_service|restart_replication|clear_old_logs|show_slow_queries) or null
+- runbook: runbook name for write ops or null
 - params: runbook params dict if write op, else {}
+- db_query_type: "servers" | "incidents" | "check_runs" | null (only for db_query intent)
+
+Available write runbooks (dangerous, require confirmation):
+restart_service, restart_replication, clear_old_logs, rotate_logs, kill_process, free_memory
+
+Available read runbooks (safe, executed via SSH):
+show_slow_queries, show_replication_status, show_top_processes, show_connections, show_disk_usage, mysql_processlist, check_backup
+
+db_query intent — for questions about the system itself (no SSH needed):
+- "какие серверы?" / "list servers" → db_query_type: "servers"
+- "открытые инциденты" / "open incidents" → db_query_type: "incidents"
+- "последние проверки" / "recent checks" → db_query_type: "check_runs"
 
 Examples:
 User: "check disk on web-01"
-{"intent": "read", "summary": "check disk space on web-01", "host": "web-01", "requires_confirm": false, "runbook": null, "params": {}}
+{"intent": "read", "summary": "check disk space on web-01", "host": "web-01", "requires_confirm": false, "runbook": null, "params": {}, "db_query_type": null}
 
 User: "restart apache on web-01"
-{"intent": "write", "summary": "restart apache2 on web-01", "host": "web-01", "requires_confirm": true, "runbook": "restart_service", "params": {"service": "apache2", "host": "web-01"}}
+{"intent": "write", "summary": "restart apache2 on web-01", "host": "web-01", "requires_confirm": true, "runbook": "restart_service", "params": {"service": "apache2"}, "db_query_type": null}
+
+User: "какие серверы доступны?"
+{"intent": "db_query", "summary": "list available servers", "host": "", "requires_confirm": false, "runbook": null, "params": {}, "db_query_type": "servers"}
+
+User: "покажи открытые инциденты"
+{"intent": "db_query", "summary": "show open incidents", "host": "", "requires_confirm": false, "runbook": null, "params": {}, "db_query_type": "incidents"}
 """.strip()
 
 
