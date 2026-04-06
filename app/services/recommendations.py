@@ -52,7 +52,7 @@ async def generate_recommendations(days: int = 7) -> list[dict]:
     from app.checks import CHECK_REGISTRY
     known_checks = ", ".join(sorted(CHECK_REGISTRY.keys()))
 
-    llm = get_llm()
+    llm = await get_llm()
     payload = json.dumps(incidents, ensure_ascii=False, indent=2)
 
     system_prompt = (

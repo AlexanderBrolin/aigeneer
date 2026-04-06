@@ -33,9 +33,9 @@ async def _refresh_llm_cache() -> dict[str, str]:
     return _llm_cache
 
 
-def get_llm(db_settings: dict | None = None) -> ChatOpenAI:
-    """Return the main (high-quality) LLM instance."""
-    db = db_settings or _llm_cache
+async def get_llm() -> ChatOpenAI:
+    """Return the main (high-quality) LLM instance with settings from DB."""
+    db = await _refresh_llm_cache()
     return ChatOpenAI(
         base_url=db.get("aitunnel_base_url") or settings.aitunnel_base_url,
         api_key=db.get("aitunnel_api_key") or settings.aitunnel_api_key,
@@ -44,9 +44,9 @@ def get_llm(db_settings: dict | None = None) -> ChatOpenAI:
     )
 
 
-def get_fast_llm(db_settings: dict | None = None) -> ChatOpenAI:
-    """Return the fast (cheaper) LLM instance."""
-    db = db_settings or _llm_cache
+async def get_fast_llm() -> ChatOpenAI:
+    """Return the fast (cheaper) LLM instance with settings from DB."""
+    db = await _refresh_llm_cache()
     return ChatOpenAI(
         base_url=db.get("aitunnel_base_url") or settings.aitunnel_base_url,
         api_key=db.get("aitunnel_api_key") or settings.aitunnel_api_key,

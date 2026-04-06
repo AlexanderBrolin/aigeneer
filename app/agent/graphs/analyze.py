@@ -33,7 +33,22 @@ async def normalize_node(state: AnalyzeState) -> dict:
     if not state.signals:
         return {"incidents": []}
 
-    llm = get_llm()
+    # Skip LLM for info-only signals (saves tokens)
+    severities = {s.get("severity") for s in state.signals if isinstance(s, dict)}
+    if severities == {"info"}:
+        # Convert info signals directly to incidents without LLM
+        incidents = []
+        for sig in state.signals:
+            incidents.append({
+                "severity": "info",
+                "problem_type": sig.get("problem_type", "unknown"),
+                "evidence": sig.get("evidence", ""),
+                "dangerous_actions": [],
+                "safe_actions": [],
+            })
+        return {"incidents": incidents}
+
+    llm = await get_llm()
     response = await llm.ainvoke([
         SystemMessage(content=NORMALIZE_PROMPT),
         HumanMessage(content=f"Сигналы с хоста {state.host}:\n{json.dumps(state.signals, ensure_ascii=False, indent=2)}"),
