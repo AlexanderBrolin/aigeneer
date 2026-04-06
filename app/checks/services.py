@@ -20,13 +20,12 @@ class SystemdServiceCheck(Check):
     name = "systemd_services"
 
     async def run(self) -> list[Signal]:
-        status_tool = self._get_tool("ssh_systemctl_status")
         services = self.config.get("services", [])
 
         signals: list[Signal] = []
 
         for service in services:
-            output = await status_tool.ainvoke({"service": service})
+            output = await self._exec_status(service)
             state = self._parse_state(output)
 
             if state == "failed":

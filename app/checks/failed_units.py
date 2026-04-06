@@ -17,8 +17,7 @@ class FailedUnitsCheck(Check):
     name = "systemd_failed"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke({"command": self._sudo("systemctl --failed --no-legend --plain")})
+        output = await self._exec(self._sudo("systemctl --failed --no-legend --plain"))
 
         signals: list[Signal] = []
 

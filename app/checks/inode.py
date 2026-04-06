@@ -22,8 +22,7 @@ class DiskInodeCheck(Check):
     name = "disk_inode"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke({"command": "df -i --output=source,ipcent,target"})
+        output = await self._exec("df -i --output=source,ipcent,target")
 
         threshold_warn = self.config.get("threshold_warning", 85)
         threshold_crit = self.config.get("threshold_critical", 95)

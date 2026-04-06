@@ -18,10 +18,7 @@ class ZombieProcessCheck(Check):
     name = "zombie_processes"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke(
-            {"command": r"ps aux --no-headers | awk '$8 ~ /^Z/ {print $0}'"}
-        )
+        output = await self._exec(r"ps aux --no-headers | awk '$8 ~ /^Z/ {print $0}'")
 
         threshold = self.config.get("threshold", 5)
 

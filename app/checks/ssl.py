@@ -26,7 +26,6 @@ class SslCertificateCheck(Check):
     name = "ssl_certificate"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
         warning_days = self.config.get("warning_days", 14)
         critical_days = self.config.get("critical_days", 3)
         vhosts = self.config.get("vhosts", ["localhost"])
@@ -39,7 +38,7 @@ class SslCertificateCheck(Check):
                 f"echo | openssl s_client -connect {vhost}:443 -servername {vhost} "
                 f"2>/dev/null | openssl x509 -noout -enddate"
             )
-            output = await ssh.ainvoke({"command": cmd})
+            output = await self._exec(cmd)
 
             match = re.search(r"notAfter=(.+)", output)
             if not match:

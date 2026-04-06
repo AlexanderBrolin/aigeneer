@@ -22,8 +22,7 @@ class DiskSpaceCheck(Check):
     name = "disk_space"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke({"command": "df -h --output=source,pcent,target"})
+        output = await self._exec("df -h --output=source,pcent,target")
 
         threshold_warn = self.config.get("threshold_warning", 80)
         threshold_crit = self.config.get("threshold_critical", 90)

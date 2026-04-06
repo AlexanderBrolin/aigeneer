@@ -22,10 +22,8 @@ class LoadAverageCheck(Check):
     name = "load_average"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-
-        nproc_out = await ssh.ainvoke({"command": "nproc"})
-        loadavg_out = await ssh.ainvoke({"command": "cat /proc/loadavg"})
+        nproc_out = await self._exec("nproc")
+        loadavg_out = await self._exec("cat /proc/loadavg")
 
         multiplier_warn = self.config.get("multiplier_warning", 1.5)
         multiplier_crit = self.config.get("multiplier_critical", 3.0)

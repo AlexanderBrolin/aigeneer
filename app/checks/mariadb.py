@@ -21,10 +21,7 @@ class ReplicationCheck(Check):
     name = "mariadb_replication"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke(
-            {"command": self._sudo('mysql -e "SHOW SLAVE STATUS\\G"')}
-        )
+        output = await self._exec(self._sudo('mysql -e "SHOW SLAVE STATUS\\G"'))
 
         # If output is empty/whitespace, replication is not configured
         if not output or not output.strip():
@@ -130,13 +127,10 @@ class SlowQueryCheck(Check):
     name = "slow_query"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
         log_path = self.config.get("log_path", "/var/log/mysql/slow.log")
         tail_lines = self.config.get("tail_lines", 50)
 
-        output = await ssh.ainvoke(
-            {"command": self._sudo(f"tail -n {tail_lines} {log_path}")}
-        )
+        output = await self._exec(self._sudo(f"tail -n {tail_lines} {log_path}"))
 
         if not output or not output.strip():
             return []

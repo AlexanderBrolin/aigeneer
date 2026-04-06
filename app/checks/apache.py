@@ -23,8 +23,7 @@ class ApacheHealthCheck(Check):
 
         # Check service status
         try:
-            status_tool = self._get_tool("ssh_systemctl_status")
-            status_output = await status_tool.ainvoke({"service": "apache2"})
+            status_output = await self._exec_status("apache2")
             if "inactive" in status_output or "failed" in status_output:
                 severity = "critical" if "failed" in status_output else "warning"
                 signals.append(
@@ -41,12 +40,11 @@ class ApacheHealthCheck(Check):
             pass
 
         # Check error log
-        ssh = self._get_tool("ssh_exec")
         log_path = self.config.get("log_path", "/var/log/apache2/error.log")
         lookback = self.config.get("lookback_minutes", 30)
 
-        output = await ssh.ainvoke(
-            {"command": self._sudo(f"find {log_path} -mmin -{lookback} -exec tail -n 50 {{}} \\;")}
+        output = await self._exec(
+            self._sudo(f"find {log_path} -mmin -{lookback} -exec tail -n 50 {{}} \\;")
         )
 
         if output and output.strip():

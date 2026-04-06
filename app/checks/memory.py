@@ -21,8 +21,7 @@ class MemoryUsageCheck(Check):
     name = "memory_usage"
 
     async def run(self) -> list[Signal]:
-        ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke({"command": "cat /proc/meminfo"})
+        output = await self._exec("cat /proc/meminfo")
 
         threshold_warn = self.config.get("threshold_warning", 85)
         threshold_crit = self.config.get("threshold_critical", 95)
