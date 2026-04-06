@@ -216,10 +216,13 @@ class TestCollectTask:
         with (
             patch("app.scheduler.tasks.get_session") as mock_get_session,
             patch("app.scheduler.tasks.CHECK_REGISTRY", {"disk_space": mock_check_cls}),
+            patch("app.agent.tool_provider.resolve_ssh_config", AsyncMock(return_value={"host": "10.0.0.1", "ssh_user": "root", "ssh_port": 22, "ssh_key_content": None})),
             patch("app.scheduler.tasks.get_read_tools", return_value=[MagicMock()]),
-            patch("app.scheduler.tasks.get_analyze_graph", AsyncMock(return_value=mock_graph)),
+            patch("app.scheduler.tasks.run_analyze_graph", mock_graph.ainvoke),
             patch("app.scheduler.tasks.save_incident", mock_save),
-            patch("app.bot.handlers.notify_incident", AsyncMock()),
+            patch("app.scheduler.tasks.find_active_incident", AsyncMock(return_value=None)),
+            patch("app.scheduler.tasks.update_incident_status", AsyncMock()),
+            patch("app.scheduler.tasks._notify_tg", AsyncMock()),
         ):
             ctx = AsyncMock()
             ctx.__aenter__ = AsyncMock(return_value=db_session)
@@ -331,8 +334,9 @@ class TestCollectTask:
             patch("app.scheduler.tasks.get_session") as mock_get_session,
             patch("app.scheduler.tasks.CHECK_REGISTRY", {"disk_space": mock_check_cls}),
             patch("app.scheduler.tasks.get_read_tools", return_value=[MagicMock()]),
+            patch("app.agent.tool_provider.resolve_ssh_config", AsyncMock(return_value={"host": "10.0.0.1", "ssh_user": "root", "ssh_port": 22, "ssh_key_content": None})),
             patch(
-                "app.scheduler.tasks.get_analyze_graph",
+                "app.scheduler.tasks.run_analyze_graph",
                 AsyncMock(side_effect=RuntimeError("Redis down")),
             ),
         ):

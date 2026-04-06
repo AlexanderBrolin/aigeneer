@@ -35,16 +35,14 @@ async def notify_incident(
 ) -> None:
     """Send an incident notification to Telegram with action buttons.
 
-    Args:
-        bot: Aiogram Bot instance.
-        chat_id: Telegram chat ID to send the notification to.
-        thread_id: LangGraph thread ID for resume.
-        interrupt_data: Dict with 'incident' and 'host' keys from interrupt().
+    Stores actions in incident DB record so buttons work indefinitely
+    (no Redis TTL dependency).
     """
     incident = interrupt_data["incident"]
     host = interrupt_data.get("host", "unknown")
     severity = incident.get("severity", "info")
     emoji = SEVERITY_EMOJI.get(severity, "\u2139\ufe0f")
+    incident_db_id = incident.get("db_id")
 
     text = (
         f"{emoji} <b>Инцидент: {incident.get('problem_type', 'unknown')}</b>\n\n"
@@ -53,19 +51,32 @@ async def notify_incident(
         f"<b>Описание:</b>\n{incident.get('evidence', 'Нет данных')}"
     )
 
-    keyboard = incident_keyboard(thread_id, incident)
+    if not incident_db_id:
+        # No DB record — send without buttons
+        await bot.send_message(chat_id=chat_id, text=text)
+        return
+
+    keyboard = incident_keyboard(incident_db_id, thread_id, incident)
     msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
 
-    # Store mapping message_id -> {thread_id, incident} in Redis with TTL
-    redis = await _get_redis()
+    # Save actions + host_config + tg_message_id in incident DB record
     try:
-        await redis.setex(
-            f"tg_thread:{msg.message_id}",
-            3600,
-            json.dumps({"thread_id": thread_id, "incident": incident}, ensure_ascii=False),
-        )
-    finally:
-        await redis.aclose()
+        from app.db.session import get_session
+        from app.db.models import Incident
+        from sqlalchemy import select
+
+        async with get_session() as session:
+            result = await session.execute(select(Incident).where(Incident.id == incident_db_id))
+            inc = result.scalar_one_or_none()
+            if inc:
+                inc.tg_message_id = msg.message_id
+                inc.actions_json = {
+                    "dangerous_actions": incident.get("dangerous_actions", []),
+                    "safe_actions": incident.get("safe_actions", []),
+                    "host_config": interrupt_data.get("host_config", {}),
+                }
+    except Exception:
+        logger.exception("Failed to save actions_json for incident %s", incident_db_id)
 
 
 @router.message(CommandStart())

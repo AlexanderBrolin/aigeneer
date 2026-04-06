@@ -24,7 +24,7 @@ from app.services.incident import find_active_incident, save_incident, update_in
 logger = logging.getLogger(__name__)
 
 
-async def _notify_tg(incident: dict, thread_id: str, host: str) -> None:
+async def _notify_tg(incident: dict, thread_id: str, host: str, host_config: dict | None = None) -> None:
     """Send incident notification to Telegram."""
     from app.services.settings import SettingsService
 
@@ -43,7 +43,7 @@ async def _notify_tg(incident: dict, thread_id: str, host: str) -> None:
         bot=bot,
         chat_id=chat_id,
         thread_id=thread_id,
-        interrupt_data={"incident": incident, "host": host},
+        interrupt_data={"incident": incident, "host": host, "host_config": host_config or {}},
     )
 
 
@@ -214,7 +214,7 @@ async def _collect_task_async(server_id: int) -> dict:
                 # Send TG notification (best-effort)
                 tg_sent = False
                 try:
-                    await _notify_tg(inc, thread_id, server_host)
+                    await _notify_tg(inc, thread_id, server_host, host_config)
                     tg_sent = True
                 except Exception:
                     logger.exception("Failed to send TG notification for incident %s", db_id)

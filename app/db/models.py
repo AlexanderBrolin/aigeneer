@@ -107,6 +107,8 @@ class Incident(Base):
         Enum("new", "notified", "actioned", "ignored", "resolved", name="incident_status"), default="new"
     )
     action_taken: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    actions_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    tg_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     confirmed_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

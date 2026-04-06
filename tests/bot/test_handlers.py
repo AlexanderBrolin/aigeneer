@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -24,6 +23,7 @@ class TestNotifyIncident:
         return {
             "host": "web-01.example.com",
             "incident": {
+                "db_id": 1,
                 "severity": "critical",
                 "problem_type": "disk_full",
                 "evidence": "/ заполнен на 95%",
@@ -31,14 +31,15 @@ class TestNotifyIncident:
                     {"label": "Очистить логи", "runbook": "clear_old_logs", "params": {"path": "/var/log"}},
                 ],
             },
+            "host_config": {"host": "web-01.example.com", "ssh_user": "deploy"},
         }
 
-    @patch("app.bot.handlers._get_redis")
+    @patch("app.db.session.get_session")
     async def test_send_message_called_with_correct_chat(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
+        self, mock_session, mock_bot, sample_interrupt_data
     ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+        mock_session.return_value.__aenter__ = AsyncMock()
+        mock_session.return_value.__aexit__ = AsyncMock()
 
         await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
 
@@ -46,12 +47,12 @@ class TestNotifyIncident:
         call_kwargs = mock_bot.send_message.call_args
         assert call_kwargs.kwargs["chat_id"] == 123456
 
-    @patch("app.bot.handlers._get_redis")
+    @patch("app.db.session.get_session")
     async def test_message_contains_host_and_problem_type(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
+        self, mock_session, mock_bot, sample_interrupt_data
     ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+        mock_session.return_value.__aenter__ = AsyncMock()
+        mock_session.return_value.__aexit__ = AsyncMock()
 
         await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
 
@@ -59,83 +60,68 @@ class TestNotifyIncident:
         assert "web-01.example.com" in text
         assert "disk_full" in text
 
-    @patch("app.bot.handlers._get_redis")
+    @patch("app.db.session.get_session")
     async def test_message_contains_severity_emoji(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
+        self, mock_session, mock_bot, sample_interrupt_data
     ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+        mock_session.return_value.__aenter__ = AsyncMock()
+        mock_session.return_value.__aexit__ = AsyncMock()
 
         await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
 
         text = mock_bot.send_message.call_args.kwargs["text"]
         assert SEVERITY_EMOJI["critical"] in text
 
-    @patch("app.bot.handlers._get_redis")
+    @patch("app.db.session.get_session")
     async def test_message_contains_evidence(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
+        self, mock_session, mock_bot, sample_interrupt_data
     ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+        mock_session.return_value.__aenter__ = AsyncMock()
+        mock_session.return_value.__aexit__ = AsyncMock()
 
         await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
 
         text = mock_bot.send_message.call_args.kwargs["text"]
         assert "/ заполнен на 95%" in text
 
-    @patch("app.bot.handlers._get_redis")
-    async def test_message_has_keyboard(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
+    @patch("app.db.session.get_session")
+    async def test_message_has_keyboard_when_db_id(
+        self, mock_session, mock_bot, sample_interrupt_data
     ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+        mock_session.return_value.__aenter__ = AsyncMock()
+        mock_session.return_value.__aexit__ = AsyncMock()
 
         await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
 
         call_kwargs = mock_bot.send_message.call_args.kwargs
-        assert call_kwargs["reply_markup"] is not None
+        assert call_kwargs.get("reply_markup") is not None
 
-    @patch("app.bot.handlers._get_redis")
-    async def test_stores_data_in_redis(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
-    ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+    async def test_no_keyboard_without_db_id(self, mock_bot):
+        """Without db_id, notification is sent without buttons."""
+        data = {
+            "host": "web-01",
+            "incident": {
+                "severity": "info",
+                "problem_type": "test",
+                "evidence": "test",
+                "dangerous_actions": [],
+            },
+        }
+        await notify_incident(mock_bot, 123456, "thread-1", data)
 
-        await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
+        mock_bot.send_message.assert_called_once()
+        call_kwargs = mock_bot.send_message.call_args.kwargs
+        assert "reply_markup" not in call_kwargs
 
-        mock_redis.setex.assert_called_once()
-        call_args = mock_redis.setex.call_args
-        # Key is tg_thread:{message_id}
-        assert call_args.args[0] == "tg_thread:42"
-        # TTL = 3600
-        assert call_args.args[1] == 3600
-        # Value is JSON containing thread_id and incident
-        stored = json.loads(call_args.args[2])
-        assert stored["thread_id"] == "thread-1"
-        assert stored["incident"]["problem_type"] == "disk_full"
-
-    @patch("app.bot.handlers._get_redis")
-    async def test_redis_connection_closed(
-        self, mock_get_redis, mock_bot, sample_interrupt_data
-    ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
-
-        await notify_incident(mock_bot, 123456, "thread-1", sample_interrupt_data)
-
-        mock_redis.aclose.assert_called_once()
-
-    @patch("app.bot.handlers._get_redis")
-    async def test_warning_severity_emoji(
-        self, mock_get_redis, mock_bot
-    ):
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
+    @patch("app.db.session.get_session")
+    async def test_warning_severity_emoji(self, mock_session, mock_bot):
+        mock_session.return_value.__aenter__ = AsyncMock()
+        mock_session.return_value.__aexit__ = AsyncMock()
 
         interrupt_data = {
             "host": "db-01",
             "incident": {
+                "db_id": 2,
                 "severity": "warning",
                 "problem_type": "replication_lag",
                 "evidence": "Отставание 60s",
