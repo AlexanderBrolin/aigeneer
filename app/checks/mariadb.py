@@ -23,7 +23,7 @@ class ReplicationCheck(Check):
     async def run(self) -> list[Signal]:
         ssh = self._get_tool("ssh_exec")
         output = await ssh.ainvoke(
-            {"command": 'mysql -e "SHOW SLAVE STATUS\\G"'}
+            {"command": self._sudo('mysql -e "SHOW SLAVE STATUS\\G"')}
         )
 
         # If output is empty/whitespace, replication is not configured
@@ -135,7 +135,7 @@ class SlowQueryCheck(Check):
         tail_lines = self.config.get("tail_lines", 50)
 
         output = await ssh.ainvoke(
-            {"command": f"tail -n {tail_lines} {log_path}"}
+            {"command": self._sudo(f"tail -n {tail_lines} {log_path}")}
         )
 
         if not output or not output.strip():

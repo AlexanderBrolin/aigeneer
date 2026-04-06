@@ -46,7 +46,7 @@ class ApacheHealthCheck(Check):
         lookback = self.config.get("lookback_minutes", 30)
 
         output = await ssh.ainvoke(
-            {"command": f"find {log_path} -mmin -{lookback} -exec tail -n 50 {{}} \\;"}
+            {"command": self._sudo(f"find {log_path} -mmin -{lookback} -exec tail -n 50 {{}} \\;")}
         )
 
         if output and output.strip():

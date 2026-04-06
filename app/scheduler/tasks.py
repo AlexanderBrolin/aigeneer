@@ -140,10 +140,12 @@ async def _collect_task_async(server_id: int) -> dict:
             continue
 
         try:
+            ssh_user = host_config.get("ssh_user", "root")
             check_instance = check_cls(
                 host=server_host,
                 config=check_info["params"],
                 tools=tools,
+                use_sudo=ssh_user != "root",
             )
             signals = await check_instance.run()
             for sig in signals:

@@ -23,7 +23,7 @@ class OpenPortsCheck(Check):
 
     async def run(self) -> list[Signal]:
         ssh = self._get_tool("ssh_exec")
-        output = await ssh.ainvoke({"command": "ss -tlnp"})
+        output = await ssh.ainvoke({"command": self._sudo("ss -tlnp")})
 
         expected = set(self.config.get("expected_ports", []))
 

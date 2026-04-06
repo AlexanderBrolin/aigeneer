@@ -31,10 +31,15 @@ class Check(ABC):
 
     name: str
 
-    def __init__(self, host: str, config: dict, tools: list):
+    def __init__(self, host: str, config: dict, tools: list, use_sudo: bool = False):
         self.host = host
         self.config = config
         self.tools = tools
+        self.use_sudo = use_sudo
+
+    def _sudo(self, command: str) -> str:
+        """Prefix command with sudo when SSH user is not root."""
+        return f"sudo {command}" if self.use_sudo else command
 
     @abstractmethod
     async def run(self) -> list[Signal]:
