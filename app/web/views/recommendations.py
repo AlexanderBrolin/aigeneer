@@ -85,9 +85,11 @@ async def apply_rec(request: Request):
     ok = await apply_recommendation(server_id, check_name, params)
 
     if ok:
-        return RedirectResponse(f"/servers/{server_id}/checks?saved=1", status_code=302)
+        return RedirectResponse(
+            f"/recommendations?msg=Проверка+{check_name}+добавлена+для+сервера+{server_id}",
+            status_code=302,
+        )
     else:
-        # check_name not in registry or server not found — redirect back with error
         return RedirectResponse(
             f"/recommendations?error=unknown_check&check_name={check_name}",
             status_code=302,
