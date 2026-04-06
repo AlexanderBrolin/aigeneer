@@ -22,21 +22,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <form method="POST" action="/servers/{{ server.id }}/checks" x-data="checksForm()" @submit="beforeSubmit">
 
-            {% set default_params = {
-                'disk_space': '{"threshold_warning": 80, "threshold_critical": 90, "paths": ["/", "/var"]}',
-                'systemd_services': '{"services": ["apache2", "mariadb"]}',
-                'mariadb_replication': '{"warning_lag_seconds": 30, "critical_lag_seconds": 300}',
-                'slow_query': '{"lines": 50, "log_path": "/var/log/mysql/mysql-slow.log"}',
-                'apache_errors': '{"log_path": "/var/log/apache2/error.log", "lookback_minutes": 30}'
-            } %}
-
-            {% set check_labels = {
-                'disk_space': 'Дисковое пространство',
-                'systemd_services': 'Systemd сервисы',
-                'mariadb_replication': 'MariaDB репликация',
-                'slow_query': 'MariaDB медленные запросы',
-                'apache_errors': 'Apache ошибки'
-            } %}
+            {# check_labels and check_defaults passed from view #}
 
             <div class="space-y-4">
                 {% for check_name in check_registry %}
@@ -68,7 +54,7 @@
                         <textarea name="check_{{ check_name }}_params"
                                   rows="4"
                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder="{{ default_params.get(check_name, '{}') }}">{{ sc.params | tojson(indent=2) if sc and sc.params else default_params.get(check_name, '{}') }}</textarea>
+                                  placeholder="{{ check_defaults.get(check_name, '{}') }}">{{ sc.params | tojson(indent=2) if sc and sc.params else check_defaults.get(check_name, '{}') }}</textarea>
                     </div>
                 </div>
                 {% endfor %}

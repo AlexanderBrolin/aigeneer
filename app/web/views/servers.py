@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
-from app.checks import CHECK_REGISTRY
+from app.checks import CHECK_DEFAULT_PARAMS, CHECK_LABELS, CHECK_REGISTRY
 from app.db.models import Server, ServerCheck, SshKey
 from app.db.session import get_session
 from app.web.auth import login_required
@@ -178,6 +178,9 @@ async def server_checks_form(request: Request, server_id: int):
         )
         existing_checks = {sc.check_name: sc for sc in result.scalars().all()}
 
+    import json as _json
+    check_defaults = {k: _json.dumps(v, ensure_ascii=False, indent=2) for k, v in CHECK_DEFAULT_PARAMS.items()}
+
     return templates.TemplateResponse(
         request,
         "server_checks.html",
@@ -186,6 +189,8 @@ async def server_checks_form(request: Request, server_id: int):
             "active_page": "servers",
             "check_registry": list(CHECK_REGISTRY.keys()),
             "existing_checks": existing_checks,
+            "check_labels": CHECK_LABELS,
+            "check_defaults": check_defaults,
         },
     )
 
