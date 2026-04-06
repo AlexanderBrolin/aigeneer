@@ -46,6 +46,26 @@ class Check(ABC):
         """Execute the check and return a list of signals."""
         ...
 
+    async def _exec(self, command: str) -> str:
+        """Execute a command via ssh_exec and return stdout.
+
+        Handles both dict responses (from tool_provider tools) and
+        plain string responses (from test mocks).
+        """
+        ssh = self._get_tool("ssh_exec")
+        result = await ssh.ainvoke({"command": command})
+        if isinstance(result, dict):
+            return result.get("stdout", "")
+        return result
+
+    async def _exec_status(self, service: str) -> str:
+        """Get systemd service status, return the state string."""
+        tool = self._get_tool("ssh_systemctl_status")
+        result = await tool.ainvoke({"service": service})
+        if isinstance(result, dict):
+            return result.get("stdout", "").strip()
+        return result.strip()
+
     def _get_tool(self, name: str):
         """Look up a tool by name from the tool list.
 

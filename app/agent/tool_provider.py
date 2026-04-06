@@ -74,47 +74,42 @@ def get_read_tools(host_config: dict) -> list:
     use_sudo = ssh_user != "root"
 
     @tool
-    async def ssh_exec(command: str) -> str:
-        """Execute a shell command on the remote host via SSH. Returns stdout."""
-        result = await _ssh_run(
+    async def ssh_exec(command: str) -> dict:
+        """Execute a shell command on the remote host via SSH. Returns {stdout, stderr, exit_code}."""
+        return await _ssh_run(
             host, command, ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
-        return result["stdout"]
 
     @tool
-    async def ssh_read_file(path: str, tail_lines: int = 0) -> str:
-        """Read a file from the remote host via SSH.
-        Set tail_lines > 0 to read only the last N lines."""
+    async def ssh_read_file(path: str, tail_lines: int = 0) -> dict:
+        """Read a file from the remote host via SSH. Returns {stdout, stderr, exit_code}."""
         cmd = f"tail -n {tail_lines} {path}" if tail_lines else f"cat {path}"
-        result = await _ssh_run(
+        return await _ssh_run(
             host, _sudo(cmd, use_sudo), ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
-        return result["stdout"]
 
     @tool
-    async def ssh_systemctl_status(service: str) -> str:
-        """Get the active state of a systemd service (active/inactive/failed)."""
-        result = await _ssh_run(
+    async def ssh_systemctl_status(service: str) -> dict:
+        """Get the status of a systemd service. Returns {stdout, stderr, exit_code}."""
+        return await _ssh_run(
             host, _sudo(f"systemctl is-active {service}", use_sudo), ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
-        return result["stdout"].strip()
 
     @tool
-    async def ssh_mysql_exec(query: str) -> str:
-        """Execute a MySQL query on the remote host via SSH. Returns tab-separated output."""
+    async def ssh_mysql_exec(query: str) -> dict:
+        """Execute a MySQL query on the remote host via SSH. Returns {stdout, stderr, exit_code}."""
         cmd = SSHMysqlExecTool._build_mysql_command(query)
-        result = await _ssh_run(
+        return await _ssh_run(
             host, _sudo(cmd, use_sudo), ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
-        return result["stdout"]
 
     return [ssh_exec, ssh_read_file, ssh_systemctl_status, ssh_mysql_exec]
 
@@ -132,13 +127,12 @@ def get_write_tools(host_config: dict) -> list:
     read_tools = get_read_tools(host_config)
 
     @tool
-    async def ssh_systemctl_restart(service: str) -> str:
-        """Restart a systemd service on the remote host via sudo. WRITE operation."""
-        result = await _ssh_run(
+    async def ssh_systemctl_restart(service: str) -> dict:
+        """Restart a systemd service on the remote host via sudo. WRITE operation. Returns {stdout, stderr, exit_code}."""
+        return await _ssh_run(
             host, f"sudo systemctl restart {service}", ssh_user,
             ssh_key_path=ssh_key_path, ssh_key_content=ssh_key_content,
             ssh_port=ssh_port,
         )
-        return result["stdout"] or result["stderr"]
 
     return read_tools + [ssh_systemctl_restart]
