@@ -26,7 +26,7 @@ class RotateLogsRunbook(Runbook):
             )
 
         tool = self._get_tool("ssh_exec")
-        command = f"sudo logrotate -f /etc/logrotate.d/{config}"
+        command = self._sudo(f"logrotate -f /etc/logrotate.d/{config}")
         output = await tool.ainvoke({"command": command})
 
         return RunbookResult(

@@ -18,7 +18,7 @@ class FreeMemoryRunbook(Runbook):
 
     async def execute(self, params: dict) -> RunbookResult:
         tool = self._get_tool("ssh_exec")
-        command = "sudo sh -c 'sync && echo 3 > /proc/sys/vm/drop_caches'"
+        command = self._sudo("sh -c 'sync && echo 3 > /proc/sys/vm/drop_caches'")
         output = await tool.ainvoke({"command": command})
 
         return RunbookResult(

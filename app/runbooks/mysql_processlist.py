@@ -16,7 +16,7 @@ class MysqlProcesslistRunbook(Runbook):
     async def execute(self, params: dict) -> RunbookResult:
         tool = self._get_tool("ssh_mysql_exec")
 
-        output = await tool.ainvoke({"command": "SHOW FULL PROCESSLIST"})
+        output = await tool.ainvoke({"query": "SHOW FULL PROCESSLIST"})
 
         return RunbookResult(
             success=True,

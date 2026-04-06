@@ -15,7 +15,7 @@ class ShowReplicationStatusRunbook(Runbook):
     async def execute(self, params: dict) -> RunbookResult:
         tool = self._get_tool("ssh_exec")
 
-        response = await tool.ainvoke({"command": 'mysql -e "SHOW SLAVE STATUS\\G"'})
+        response = await tool.ainvoke({"command": self._sudo('mysql -e "SHOW SLAVE STATUS\\G"')})
 
         exit_code = response.get("exit_code", 0)
         stdout = response.get("stdout", "")

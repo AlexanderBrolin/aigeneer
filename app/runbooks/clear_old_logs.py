@@ -23,7 +23,7 @@ class ClearOldLogsRunbook(Runbook):
         log_path = params.get("log_path", "/var/log")
         older_than_days = params.get("older_than_days", 30)
 
-        command = f'find {log_path} -name "*.log.*" -mtime +{older_than_days} -delete -print'
+        command = self._sudo(f'find {log_path} -name "*.log.*" -mtime +{older_than_days} -delete -print')
         response = await tool.ainvoke({"command": command})
 
         exit_code = response.get("exit_code", 0)

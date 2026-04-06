@@ -23,8 +23,13 @@ class Runbook(ABC):
     name: str
     is_dangerous: bool = False
 
-    def __init__(self, tools: list):
+    def __init__(self, tools: list, use_sudo: bool = False):
         self.tools = tools
+        self.use_sudo = use_sudo
+
+    def _sudo(self, command: str) -> str:
+        """Prefix command with sudo when SSH user is not root."""
+        return f"sudo {command}" if self.use_sudo else command
 
     @abstractmethod
     async def execute(self, params: dict) -> RunbookResult:

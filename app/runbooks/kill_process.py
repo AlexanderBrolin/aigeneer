@@ -28,7 +28,7 @@ class KillProcessRunbook(Runbook):
 
         signal = params.get("signal", 15)
         tool = self._get_tool("ssh_exec")
-        command = f"sudo kill -{signal} {pid}"
+        command = self._sudo(f"kill -{signal} {pid}")
         output = await tool.ainvoke({"command": command})
 
         return RunbookResult(

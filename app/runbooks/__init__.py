@@ -50,4 +50,5 @@ async def run_runbook(name: str, params: dict, tools: list) -> RunbookResult:
     cls = RUNBOOK_REGISTRY.get(name)
     if not cls:
         return RunbookResult(success=False, message=f"Runbook `{name}` не найден")
-    return await cls(tools).execute(params)
+    use_sudo = params.get("ssh_user", "root") != "root"
+    return await cls(tools, use_sudo=use_sudo).execute(params)

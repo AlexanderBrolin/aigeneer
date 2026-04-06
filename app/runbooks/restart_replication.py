@@ -17,7 +17,7 @@ class RestartReplicationRunbook(Runbook):
         tool = self._get_tool("ssh_exec")
 
         # Step 1: Stop and start replication
-        restart_resp = await tool.ainvoke({"command": 'mysql -e "STOP SLAVE; START SLAVE;"'})
+        restart_resp = await tool.ainvoke({"command": self._sudo('mysql -e "STOP SLAVE; START SLAVE;"')})
         if restart_resp.get("exit_code", 0) != 0:
             stderr = restart_resp.get("stderr", "")
             return RunbookResult(
@@ -27,7 +27,7 @@ class RestartReplicationRunbook(Runbook):
             )
 
         # Step 2: Verify replication status
-        status_resp = await tool.ainvoke({"command": 'mysql -e "SHOW SLAVE STATUS\\G"'})
+        status_resp = await tool.ainvoke({"command": self._sudo('mysql -e "SHOW SLAVE STATUS\\G"')})
         status = status_resp.get("stdout", "")
 
         io_running = "Slave_IO_Running: Yes" in status

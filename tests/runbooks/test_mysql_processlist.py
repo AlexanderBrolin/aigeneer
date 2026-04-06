@@ -61,7 +61,7 @@ class TestMysqlProcesslistRunbook:
         runbook = MysqlProcesslistRunbook(tools=[CaptureMysqlTool()])
         result = await runbook.execute({})
         assert result.success is True
-        assert "SHOW FULL PROCESSLIST" in called_with.get("command", "")
+        assert "SHOW FULL PROCESSLIST" in called_with.get("query", called_with.get("command", ""))
 
     async def test_fails_if_ssh_exec_instead_of_mysql(self):
         """Runbook raises RuntimeError (wraps StopIteration) if only ssh_exec is provided."""

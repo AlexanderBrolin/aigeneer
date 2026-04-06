@@ -22,7 +22,7 @@ class ShowSlowQueriesRunbook(Runbook):
         lines = params.get("lines", 50)
         log_path = params.get("log_path", "/var/log/mysql/slow.log")
 
-        response = await tool.ainvoke({"command": f"tail -n {lines} {log_path}"})
+        response = await tool.ainvoke({"command": self._sudo(f"tail -n {lines} {log_path}")})
 
         exit_code = response.get("exit_code", 0)
         stdout = response.get("stdout", "")
